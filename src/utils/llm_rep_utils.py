@@ -18,7 +18,7 @@ from transformers import AutoConfig, AutoModel, AutoTokenizer
 
 
 class LMEmbedding:
-    def __init__(self, args: DictConfig):
+    def __init__(self, args: DictConfig, file_saver):
         self.config: DictConfig = args
         self.model_id: str = args.model.model_id
         self.bs = self.config.dataset.language_data.batch_size
@@ -26,14 +26,16 @@ class LMEmbedding:
         self.model_dim = args.model.dim
         self.dataset_name: str = args.dataset.language_data.dataset_name_hf.split('/')[-1]
         self.current_language: str = args.muse.language
+        self.file_saver = file_saver
 
         if self.config.model.specific_last_hidden_state is not None:
             layers_to_extract_str = f"layer_{self.config.model.specific_last_hidden_state}"
         else:
             layers_to_extract_str = f"layers_1-{self.config.model.last_n_hidden_states}"
-        self.alias_emb_dir: Path = (
-                Path(args.common.alias_emb_dir) / self.current_language / layers_to_extract_str / self.dataset_name
+        self.save_embeddings_path: Path = (
+                Path(args.common.embeddings_dataset_root) / self.current_language / layers_to_extract_str / self.dataset_name
         )
+
         
         # Store embedding options
         self.emb_per_object: bool = args.common.emb_per_object
@@ -48,10 +50,10 @@ class LMEmbedding:
         )
         
         # Create directory structure
-        os.makedirs(self.alias_emb_dir, exist_ok=True)
+        os.makedirs(self.save_embeddings_path, exist_ok=True)
         
         # Initialize database
-        self.con = duckdb.connect(f"{self.alias_emb_dir}/{self.model_name}.db")
+        self.con = duckdb.connect(f"{self.save_embeddings_path}/{self.model_name}.db")
         self.con.execute("DROP TABLE IF EXISTS data")
         self.con.commit()
         self.con.execute(f"CREATE TABLE IF NOT EXISTS data (alias VARCHAR, embedding FLOAT[{self.model_dim}])")
@@ -59,7 +61,7 @@ class LMEmbedding:
     def get_lm_layer_representations(self) -> None:
         """Extract language model representations with support for layer selection and endpoints"""
         
-        file_to_save = self.alias_emb_dir / f"{self.model_name}_{self.model_dim}.pth"
+        file_to_save = self.save_embeddings_path / f"{self.model_name}_{self.model_dim}.pth"
         if file_to_save.exists():
             print(f"[DEBUG] File {file_to_save} already exists.")
             return
@@ -749,5 +751,9 @@ class LMEmbedding:
                 avg_embeddings.append(np.mean(result, axis=0))
                 final_alias.append(i)
         print(result.shape)
-        torch.save({"dico": final_alias, "vectors": torch.from_numpy(np.array(avg_embeddings))},
-                   self.alias_emb_dir / f"{self.model_name}_{self.model_dim}.pth")
+        # torch.save({"dico": final_alias, "vectors": torch.from_numpy(np.array(avg_embeddings))},
+        #            self.save_embeddings_path / f"{self.model_name}_{self.model_dim}.pth")
+
+        object_to_save = {"dico": final_alias, "vectors": torch.from_numpy(np.array(avg_embeddings))}
+        save_path = self.save_embeddings_path / f"{self.model_name}_{self.model_dim}.pth"
+        self.file_saver.save(object_to_save, save_path)

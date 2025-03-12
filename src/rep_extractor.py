@@ -6,6 +6,7 @@ from omegaconf import DictConfig
 from src.config import ModelType
 from src.utils.llm_rep_utils import LMEmbedding
 from src.utils.vm_rep_utils import VMEmbedding
+from src.utils.file_saver import FileSaver
 
 
 class RepExtractor:
@@ -21,11 +22,12 @@ class RepExtractor:
         self.model_name: str = config.model.model_name
         self.model_type: ModelType = config.model.model_type
         self.model_dim: int = config.model.dim
-        self.alias_emb_dir: Path = (
-                Path(config.common.alias_emb_dir) / self.model_type.value
-        )
         self.seed: int = config.common.seed
         self.current_language: str = config.muse.language
+        
+        self.file_saver = FileSaver(self.config)
+
+        self.config.common.embeddings_dataset_root = f"{config.common.embeddings_dataset_root}/{self.model_type.value}"
         
         # Layer selection configuration
         
@@ -79,5 +81,5 @@ class RepExtractor:
         embeddings_extractor.get_vm_layer_representations()
 
     def __get_lm_rep(self) -> None:
-        embeddings_extractor = LMEmbedding(self.config)
+        embeddings_extractor = LMEmbedding(self.config, self.file_saver)
         embeddings_extractor.get_lm_layer_representations() 

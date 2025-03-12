@@ -119,7 +119,7 @@ MODEL_CONFIGS = {
 @dataclass
 class CommonConfig:
     seed: int = field(default=42, metadata={"help": "Seed for reproducibility."})
-    alias_emb_dir: str = field(
+    embeddings_dataset_root: str = field(
         default="./data/embeddings",
         metadata={"help": "Path to save word embeddings (decontextualized)"},
     )
@@ -278,11 +278,11 @@ class MuseConfig:
         metadata={"help": "Path to save the dictionary."},
     )
     vm_emb_root: str = field(
-        default=f"{II('common.alias_emb_dir')}/{ModelType.VM.value}/{II('dataset.dataset_name')}",
+        default=f"{II('common.embeddings_dataset_root')}/{ModelType.VM.value}/{II('dataset.dataset_name')}",
         metadata={"help": "Path to save the vision model embeddings."},
     )
     lm_emb_root: str = field(
-        default=f"{II('common.alias_emb_dir')}/{ModelType.LM.value}",
+        default=f"{II('common.embeddings_dataset_root')}/{ModelType.LM.value}",
         metadata={"help": "Path to save the language model embeddings."},
     )
 
@@ -309,6 +309,25 @@ class MuseConfig:
 
 
 @dataclass
+class HuggingFaceRepository:
+    token: Optional[str] = field(
+        default=None,
+        metadata={"help": "Hugging face access token."}
+    )
+    repo_id: Optional[str] = field(
+        default=None,
+        metadata={"help": "Repository name."}
+    )
+    repo_type: str = field(
+        default="dataset",
+        metadata={"help": "Type of the repository."}
+    )
+    intermediate_buffer_save: bool = field(
+        default=True, 
+        metadata={"help": "Before uploading to Hugging Face save it in buffer."})
+    
+
+@dataclass
 class RunConfig:
     model: ModelInfo = field(default_factory=lambda: MODEL_CONFIGS["bert-base-uncased"])
     common: CommonConfig = field(default_factory=CommonConfig)
@@ -316,3 +335,6 @@ class RunConfig:
     muse: MuseConfig = field(default_factory=MuseConfig)
     endpoint: EndpointConfig = field(default_factory=EndpointConfig)
     run_muse: bool = field(default=False, metadata={"help": "Run MUSE part."})
+    
+    save_hugging_face: bool = field(default=False, metadata={"help": "Save files on hugging face."})
+    hugging_face_save_repo: HuggingFaceRepository = field(default_factory=HuggingFaceRepository)
