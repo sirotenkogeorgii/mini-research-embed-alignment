@@ -77,6 +77,12 @@ class ModelInfo:
 
 
 MODEL_CONFIGS = {
+    "Llama-2-7b": ModelInfo(
+        model_id="meta-llama/Llama-2-7b-hf",
+        model_size=6740,
+        dim=4096,
+        model_type=ModelType.LM,
+    ),
     "opt-125m": ModelInfo(
         model_id="facebook/opt-125m",
         model_size=125,
@@ -90,7 +96,7 @@ MODEL_CONFIGS = {
         model_type=ModelType.LM,
     ),
     "bert-base-uncased": ModelInfo(
-        model_id="bert-base-uncased",
+        model_id="google-bert/bert-base-uncased",
         model_size=110,
         dim=768,
         model_type=ModelType.LM,
