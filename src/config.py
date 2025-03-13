@@ -159,21 +159,31 @@ class LanguageDataConfig:
         metadata={"help": "Batch size for aliases."},
     )
     
-
-
 @dataclass
-class DataConfig:
+class VisionDataConfig:
     dataset_name: str = field(
         default="imagenet", metadata={"help": "Name of the image dataset."}
     )
-    image_dir: str = field(
+    dataset_path: str = field(
         default=MISSING,
-        metadata={"help": "Path to save the raw image data."},
+        metadata={"help": "Path to image dataset."},
     )
     image_id_pairs: str = field(
         default=MISSING,
         metadata={"help": "Path to save the image id pairs."},
     )
+    per_image: bool = field(
+        default=False, metadata={"help": "Whether to save embeddings separately."}
+    )
+    batch_size: int = field(
+        default=32,
+        metadata={"help": "Batch size for aliases."},
+    )
+
+
+@dataclass
+class DataConfig:
+    vision_data: VisionDataConfig = field(default_factory=VisionDataConfig)
     language_data: LanguageDataConfig = field(default_factory=LanguageDataConfig)
 
 
