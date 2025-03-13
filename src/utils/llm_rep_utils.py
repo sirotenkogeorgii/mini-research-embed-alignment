@@ -66,21 +66,36 @@ class LMEmbedding:
             print(f"[DEBUG] File {file_to_save} already exists.")
             return
 
+        # Clean up GPU memory before starting
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            # Report initial GPU memory usage
+            print(f"Initial GPU memory allocated: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
+            print(f"Initial GPU memory reserved: {torch.cuda.memory_reserved() / 1024**2:.2f} MB")
+
         # Load translation dataset for the current language
-        # TODO: change to norm dataset, not it's dummy
         translated_sentences = self._load_translated_dataset()
         
-        if self.config.endpoint.lm_endpoint is not None:
-            raise NotImplementedError("Custom error message describing what needs to be implemented")
-        else:
-            # Process with local model
-            self._process_with_local_model(translated_sentences)
+        try:
+            if self.config.endpoint.lm_endpoint is not None:
+                raise NotImplementedError("Custom error message describing what needs to be implemented")
+            else:
+                # Process with local model
+                self._process_with_local_model(translated_sentences)
+                
+            # Save extracted embeddings
+            if not self.emb_per_object:
+                self.save_avg_embed(translated_sentences["alias"])
+        finally:
+            # Close database connection
+            self.con.close()
             
-        # Save extracted embeddings
-        if not self.emb_per_object:
-            self.save_avg_embed(translated_sentences["alias"])
-
-        self.con.close()
+            # Clean up GPU memory after processing
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                # Report final GPU memory usage
+                print(f"Final GPU memory allocated: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
+                print(f"Final GPU memory reserved: {torch.cuda.memory_reserved() / 1024**2:.2f} MB")
         
         print(f"Language embeddings successfully extracted for {self.current_language}!")
 
@@ -97,27 +112,6 @@ class LMEmbedding:
 
         random_subset = shuffled.select(range(dataset_size))
         return random_subset
-    
-
-        # translation_file = Path(f"data/translations/{self.current_language}/{self.dataset_name}_translations.json")
-        
-        # if translation_file.exists():
-        #     with open(translation_file, "r") as f:
-        #         translations = json.load(f)
-        #     return Dataset.from_dict(translations)
-        # else:
-        #     # Placeholder for translation process
-        #     print(f"Translation file for {self.current_language} not found. Creating dummy dataset.")
-        #     # This would be replaced with actual translated data
-        #     dummy_data = {
-        #         "alias": ["dog", "cat", "house"],
-        #         "sentences": [
-        #             ["This is a dog", "I have a dog"],
-        #             ["This is a cat", "I have a cat"],
-        #             ["This is a house", "I live in a house"]
-        #         ]
-        #     }
-        #     return Dataset.from_dict(dummy_data)
 
     def _get_model_and_tokenizer(self):
         # Configure the model to output hidden states
@@ -132,12 +126,23 @@ class LMEmbedding:
             use_fast=False
         )
 
-        if self.config.model.use_quantization_8bit and not torch.cuda.is_available():
-            self.config.model.use_quantization_8bit = False
-            warnings.warn("CUDA is not available. Quantization has been disabled.", UserWarning)
+        # Check for CUDA availability
+        has_cuda = torch.cuda.is_available()
+        
+        # Set appropriate device
+        if has_cuda:
+            device = "cuda"
+            # Clear GPU memory before loading model
+            torch.cuda.empty_cache()
+        else:
+            device = "cpu"
+            # Disable quantization if no CUDA
+            if self.config.model.use_quantization_8bit:
+                self.config.model.use_quantization_8bit = False
+                warnings.warn("CUDA is not available. Quantization has been disabled.", UserWarning)
 
         match self.config.model.torch_type:
-            case "bfloat16" if not self.model_name.startswith(("gpt", "bert")) and not torch.cuda.is_available():
+            case "bfloat16" if not self.model_name.startswith(("gpt", "bert")) and not has_cuda:
                 torch_type = torch.bfloat16
             case "float16" if not self.model_name.startswith(("gpt", "bert")):
                 torch_type = torch.float16
@@ -149,12 +154,19 @@ class LMEmbedding:
             config=configuration,
             cache_dir=cache_path,
             load_in_8bit=self.config.model.use_quantization_8bit,
+            device_map="auto" if has_cuda else None,  # Let transformers optimize device allocation
             torch_dtype=torch_type
         )
         
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        device = torch.device(device)
         model.to(device)
         model.eval()
+        
+        # Apply optimization for inference
+        # Optimize memory usage for inference
+        if hasattr(model, "config") and getattr(model.config, "model_type", None) != "gpt2":
+            # Don't use inference mode for GPT-2 as it can lead to issues
+            torch.inference_mode(True)
 
         return model, tokenizer
 
@@ -166,10 +178,12 @@ class LMEmbedding:
         # Process batch by batch
         pattern = r"\s+([^\w\s]+)(\s*)$"
         replacement = r"\1\2"
-
+        
+        # Collect all data for batch database insertion
+        all_insert_data = []
+        
         for i in tqdm(range(0, len(dataset), self.bs)):
             batch = dataset[i: i + self.bs]
-            # print(batch)
 
             # flat sentences from the batch
             batch_flat_sentences = [
@@ -187,15 +201,25 @@ class LMEmbedding:
                 batch_flat_sentences, tokenizer, model, batch_aliases_repeated
             )
 
+            # Prepare data for insertion but don't insert yet
+            batch_insert_data = [(related_aliases[embedding_i], embedding.detach().cpu().numpy().tolist()) for embedding_i, embedding in enumerate(embeddings)]
+            all_insert_data.extend(batch_insert_data)
+            
+            # Add explicit GPU memory cleanup at regular intervals
+            if i % (self.bs * 10) == 0 and torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                
+            # Perform batch database insertion every 1000 items to avoid memory buildup
+            if len(all_insert_data) >= 1000:
+                # batch_insert_data = [(alias, embedding.detach().cpu().numpy().tolist()) for (alias, embedding) in all_insert_data]
+                self.con.executemany("INSERT INTO data VALUES (?, ?)", all_insert_data)
+                self.con.commit()
+                all_insert_data = []
 
-            # Prepare the data for batch insert
-            insert_data = [(related_aliases[j], e.tolist()) for j, e in enumerate(embeddings)]
-            # Execute the batch insert
-            self.con.executemany("INSERT INTO data VALUES (?, ?)", insert_data)
-
-        # self.save_avg_embed(dataset["alias"])
-        # self.con.close()
-    
+        # Insert any remaining data
+        if all_insert_data:
+            self.con.executemany("INSERT INTO data VALUES (?, ?)", all_insert_data)
+            self.con.commit()
 
     def alias_embed(
             self,
@@ -284,14 +308,15 @@ class LMEmbedding:
         # print(f"[DEBUG](_average_layers_embedding) selected last layers: {len(selected_layers)}. Shape of the layer: {selected_layers[0].shape}")
         layers_emb = torch.stack([layer[sentence_idx] for layer in selected_layers])
         avg_emb = torch.mean(layers_emb, dim=0)
-        return self.get_tokens_embedding(avg_emb.cpu().numpy(), words_mask)
+        # Keep on GPU until the last moment
+        return self.get_tokens_embedding(avg_emb, words_mask)
     
 
 
     def _get_last_layer_embedding(self, selected_layers: List[torch.Tensor], sentence_idx: int, words_mask: list) -> np.ndarray:
         """Get embedding from the last selected layer"""
         # print(f"[DEBUG](_get_last_layer_embedding) selected last layers: {len(selected_layers)}. Shape of the layer: {selected_layers[0].shape}")
-        last_layer_emb = selected_layers[-1][sentence_idx].cpu().numpy()
+        last_layer_emb = selected_layers[-1][sentence_idx]  # Keep as tensor, don't convert to numpy yet
         return self.get_tokens_embedding(last_layer_emb, words_mask)
     
 
@@ -360,7 +385,6 @@ class LMEmbedding:
     
     def _map_bert_tokens(self, sentence: str, target_word: str, tokenizer: Any, words_mask: list) -> list:
         """Map tokens for BERT-like models (BERT, DistilBERT)"""
-
 
         # BERT uses WordPiece tokenization with ## for subwords
         tokens = tokenizer.tokenize(sentence)
@@ -694,15 +718,14 @@ class LMEmbedding:
 
     def get_tokens_embedding(
             self,
-            embeddings_to_add: np.ndarray,
+            embeddings_to_add: Union[np.ndarray, torch.Tensor],
             tokens_indices: list,
     ) -> np.ndarray:
-        # TODO: Add an option to take the last token (for example, for decoder-only transformers) instread of averaging them
         """Extract token embeddings for specific tokens"""
         # Get embeddings for tokens of interest
         token_embeddings = embeddings_to_add[tokens_indices]
         # Average embeddings for all tokens
-        avg_embedding = np.mean(token_embeddings, axis=0)
+        avg_embedding = torch.mean(token_embeddings, axis=0)
         return avg_embedding
 
 
