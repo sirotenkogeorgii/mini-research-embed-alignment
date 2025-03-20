@@ -59,7 +59,7 @@ class LMEmbedding:
         self.con.execute(f"CREATE TABLE IF NOT EXISTS data (alias VARCHAR, embedding FLOAT[{self.model_dim}])")
 
     def get_lm_layer_representations(self) -> None:
-        """Extract language model representations with support for layer selection and endpoints"""
+        """Extract language model representations"""
         
         file_to_save = self.save_embeddings_path / f"{self.model_name}_{self.model_dim}.pth"
         if file_to_save.exists():
@@ -78,7 +78,7 @@ class LMEmbedding:
         
         try:
             if self.config.endpoint.lm_endpoint is not None:
-                raise NotImplementedError("Custom error message describing what needs to be implemented")
+                raise NotImplementedError("Endpoint support is not implemented yet.")
             else:
                 # Process with local model
                 self._process_with_local_model(translated_sentences)
@@ -134,6 +134,11 @@ class LMEmbedding:
             device = "cuda"
             # Clear GPU memory before loading model
             torch.cuda.empty_cache()
+
+            max_memory = {
+                k: f"{torch.cuda.get_device_properties(k).total_memory // 1024 ** 3}GB"
+                for k in self.device
+            }
         else:
             device = "cpu"
             # Disable quantization if no CUDA
@@ -149,12 +154,14 @@ class LMEmbedding:
             case _:
                 torch_type = None
 
+
         model = AutoModel.from_pretrained(
             self.model_id,
             config=configuration,
             cache_dir=cache_path,
             load_in_8bit=self.config.model.use_quantization_8bit,
             device_map="auto" if has_cuda else None,  # Let transformers optimize device allocation
+            max_memory=max_memory if has_cuda else None,
             torch_dtype=torch_type
         )
         
@@ -356,12 +363,13 @@ class LMEmbedding:
             return self._map_llama_family_tokens(words_in_array, target_word, tokenizer, words_mask)
         else:
             # Generic fallback method for other tokenizers
+            print(f"[DEBUG] Generic tokenizer was chosen.")
             return self._map_generic_tokens(words_in_array, target_word, tokenizer, words_mask)
     
     def _identify_tokenizer_type(self, tokenizer: Any) -> str:
         """Identify the type of tokenizer based on its class name"""
         tokenizer_class = tokenizer.__class__.__name__.lower()
-        
+
         if "bert" in tokenizer_class and "roberta" not in tokenizer_class and "deberta" not in tokenizer_class:
             return "bert"
         elif "roberta" in tokenizer_class:
@@ -387,6 +395,8 @@ class LMEmbedding:
         """Map tokens for BERT-like models (BERT, DistilBERT)"""
 
         # BERT uses WordPiece tokenization with ## for subwords
+        # tokens = tokenizer.tokenize(sentence.lower())
+        # target_tokens = tokenizer.tokenize(target_word.lower())
         tokens = tokenizer.tokenize(sentence)
         target_tokens = tokenizer.tokenize(target_word)
 
@@ -412,9 +422,10 @@ class LMEmbedding:
             return [idx for idx in matches[0] if idx < len(words_mask) and words_mask[idx] == 1]
         
 
-        print(f"[DEBUG] fullback mapping was called on sentence {sentence}")
-        print(f"[DEBUG] fullback mapping was called on target_word {target_word}")
-        print(f"[DEBUG] fullback mapping was called on tokens {tokens}")
+        print()
+        print(f"[DEBUG](bert) fullback mapping was called on sentence {sentence.lower()}")
+        print(f"[DEBUG](bert) fullback mapping was called on target_word {target_word.lower()}")
+        print(f"[DEBUG](bert) fullback mapping was called on tokens {tokens}")
         print()
 
         # If no matches found, use a fallback method
@@ -423,6 +434,8 @@ class LMEmbedding:
     def _map_roberta_tokens(self, sentence: str, target_word: str, tokenizer: Any, words_mask: list) -> list:
         """Map tokens for RoBERTa models which use byte-level BPE"""
         # RoBERTa uses byte-level BPE with Ġ at the start of tokens
+        # tokens = tokenizer.tokenize(sentence.lower())
+        # target_tokens = tokenizer.tokenize(" " + target_word.lower())  # Add space to match RoBERTa's prefix
         tokens = tokenizer.tokenize(sentence)
         target_tokens = tokenizer.tokenize(" " + target_word)  # Add space to match RoBERTa's prefix
         
@@ -442,6 +455,7 @@ class LMEmbedding:
             return [idx for idx in matches[0] if idx < len(words_mask) and words_mask[idx] == 1]
             
         # Try with alternative prefix (some RoBERTa variants)
+        # target_tokens = tokenizer.tokenize(target_word.lower())
         target_tokens = tokenizer.tokenize(target_word)
         
         matches = []
@@ -461,15 +475,15 @@ class LMEmbedding:
         # If no matches found, use fallback method
         return self._map_fallback(tokens, words_mask)
     
-
-    
     def _map_gpt2_tokens(self, sentence: str, target_word: str, tokenizer: Any, words_mask: list) -> list:
         """Map tokens for GPT-2 models which use byte-level BPE"""
         # GPT-2 uses byte-level BPE, similar to RoBERTa but with different prefixes
-        tokens = tokenizer.tokenize(sentence)
+        tokens = tokenizer.tokenize(sentence.lower())
 
         # TODO: Optimization is possible. We can take into account the possition of the target word in the sentence.
         # Try different prefix combinations for GPT-2
+
+        target_word = target_word.lower()
         target_variations = [
             tokenizer.tokenize(target_word),
             tokenizer.tokenize(" " + target_word),
@@ -491,6 +505,15 @@ class LMEmbedding:
             if matches:
                 return [idx for idx in matches[0] if idx < len(words_mask) and words_mask[idx] == 1]
         
+        print()
+        print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on sentence: {sentence}")
+        print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on target_word: {target_word}")
+        print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on target_tokens [0]: {target_variations[0]}")
+        print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on target_tokens [1]: {target_variations[1]}")
+        print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on target_tokens [2]: {target_variations[2]}")
+        print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on tokens {tokens}")
+        print()
+
         # If no matches found, use fallback method
         return self._map_fallback(tokens, words_mask)
     
@@ -504,6 +527,7 @@ class LMEmbedding:
             return self._map_llama3_tokens(sentence, target_word, tokenizer, words_mask)
         
         # Standard handling for LLaMA 2, OPT, Mixtral, etc.
+        # tokens = tokenizer.tokenize(sentence.lower())
         tokens = tokenizer.tokenize(sentence)
         
         # Check for common SentencePiece prefixes in tokens to adjust strategy
@@ -511,6 +535,8 @@ class LMEmbedding:
         space_prefix = "▁" if has_underscore_prefix else " "
         
         # Try different variations for LLaMA family models with appropriate prefixes
+        # target_word = target_word.lower()
+        target_word = target_word
         target_variations = [
             tokenizer.tokenize(target_word),
             tokenizer.tokenize(space_prefix + target_word),
@@ -538,7 +564,7 @@ class LMEmbedding:
         # Try using offset mapping if available
         try:
             # Some tokenizers provide character offset information
-            encoding = tokenizer(sentence, return_offsets_mapping=True, add_special_tokens=False)
+            encoding = tokenizer(sentence.lower(), return_offsets_mapping=True, add_special_tokens=False)
             if 'offset_mapping' in encoding:
                 target_lower = target_word.lower()
                 sentence_lower = sentence.lower()
@@ -568,13 +594,21 @@ class LMEmbedding:
             # If this approach fails, continue to next method
             pass
         
+
+        print()
+        print(f"[DEBUG] fullback mapping was called on sentence {sentence}")
+        print(f"[DEBUG] fullback mapping was called on target_word {target_word}")
+        print(f"[DEBUG] fullback mapping was called on tokens {tokens}")
+        print()
         # If no matches found, use the generic fallback method
         return self._map_generic_tokens(sentence, target_word, tokenizer, words_mask)
     
     def _map_llama3_tokens(self, sentence: str, target_word: str, tokenizer: Any, words_mask: list) -> list:
         """Map tokens specifically for LLaMA 3 which has some tokenization differences from LLaMA 2"""
+        # tokens = tokenizer.tokenize(sentence.lower())
         tokens = tokenizer.tokenize(sentence)
         
+        # target_word = target_word.lower()
         # Try different prefix variations specific to LLaMA 3
         target_variations = [
             tokenizer.tokenize(target_word),
@@ -777,6 +811,8 @@ class LMEmbedding:
         # torch.save({"dico": final_alias, "vectors": torch.from_numpy(np.array(avg_embeddings))},
         #            self.save_embeddings_path / f"{self.model_name}_{self.model_dim}.pth")
 
+        embegginds_dim = result.shape[-1]
         object_to_save = {"dico": final_alias, "vectors": torch.from_numpy(np.array(avg_embeddings))}
-        save_path = self.save_embeddings_path / f"{self.model_name}_{self.model_dim}.pth"
+        # save_path = self.save_embeddings_path / f"{self.model_name}_{self.model_dim}.pth"
+        save_path = self.save_embeddings_path / f"{self.model_name}_{embegginds_dim}.pth"
         self.file_saver.save(object_to_save, save_path)
