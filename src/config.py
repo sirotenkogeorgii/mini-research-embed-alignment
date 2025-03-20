@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Any
 
 import torch
 import warnings
@@ -74,7 +74,7 @@ class ModelInfo:
             raise Exception("At least one of them must be non-None [last_n_hidden_states, specific_last_hidden_state]!")
     
 
-
+# 128, 256, 512, 768, 1024, 1280, 4096, 
 
 MODEL_CONFIGS = {
     "Llama-2-7b": ModelInfo(
@@ -119,6 +119,32 @@ MODEL_CONFIGS = {
         dim=768,
         model_type=ModelType.VM,
     ),
+    "resnet18": ModelInfo(
+        model_id="resnet18",
+        dim=512,
+        model_size=512,
+        model_type=ModelType.VM,
+    ),
+    "resnet34": ModelInfo(
+        model_id="resnet34",
+        dim=512,
+        model_type=ModelType.VM,
+    ),
+    "resnet50": ModelInfo(
+        model_id="resnet50",
+        dim=2048,
+        model_type=ModelType.VM,
+    ),
+    "resnet101": ModelInfo(
+        model_id="resnet101",
+        dim=2048,
+        model_type=ModelType.VM,
+    ),
+    "resnet152": ModelInfo(
+        model_id="resnet152",
+        dim=2048,
+        model_type=ModelType.VM,
+    ),
 }
 
 
@@ -141,6 +167,11 @@ class CommonConfig:
         default="./data/dicts",
         metadata={"help": "Path to save the dictionary."},
     )
+    # reduce_dim: bool = field(
+    #     default=False,
+    #     metadata={"help": "Whether to reduce the dimencionality of embeddings."},
+    # )
+    # reductiom_dims: List[int] = field(default_factory=lambda: [])
 
     
 
@@ -172,8 +203,15 @@ class VisionDataConfig:
         default=MISSING,
         metadata={"help": "Path to save the image id pairs."},
     )
+    available_image_ids: str = field(
+        default=MISSING,
+        metadata={"help": "Available image ids."},
+    )
     per_image: bool = field(
         default=False, metadata={"help": "Whether to save embeddings separately."}
+    )
+    max_per_class_images: int = field(
+        default=100, metadata={"help": "Maximum images per class to use for a concept extraction."}
     )
     batch_size: int = field(
         default=32,
@@ -218,16 +256,15 @@ class MuseConfig:
             "help": "Different experiments settings: BASE, image_disp, lang_disp, freq, poly."
         },
     )
+    supervised: bool = field(default=True, metadata={"help": "Whether to perform alignment in a supervised manner."})
+    lm_dataset: str = field(default="common-words-79k", metadata={"help": "Source dataset for the language embeddings."})
+    vm_dataset: str = field(default="imagenet-ul-ex-1k-train-subset", metadata={"help": "Source dataset for the vision embeddings."})
     lm: str = field(default="bert-base-uncased", metadata={"help": "Language model name."})
     vm: str = field(default="clip-ViT-B-32", metadata={"help": "Vision model name."})
     language: str = field(default="english", metadata={"help": "Language to use for alignment."})
     dim: int = field(default=768, metadata={"help": "Dimension of the embeddings."})
-    fold: int = field(default=1, metadata={"help": "Fold number."})
-    bin_name: str = field(
-        default="",
-        metadata={"help": "Various Bins name only for non-original experiments."},
-    )
-    data_type: str = field(default="cleaned", metadata={"help": "Data types: cleaned."})
+    layer_identifier: str = field(default="layer_1", metadata={"help": "From what layer the language embeddings were extracted"})
+    
     n_refinement: int = field(default=0, metadata={"help": "Number of refinements."})
     normalize_embeddings: str = field(
         default="center", metadata={"help": "Normalization."}
@@ -242,11 +279,19 @@ class MuseConfig:
     dico_train: str = field(
         init=False, metadata={"help": "Path to load training dictionary."}
     )
+
+    src_dico: Any = field(
+        default=None, metadata={"help": "Path to load source representations."}
+    )
+    tgt_dico: Any = field(
+        default=None, metadata={"help": "Path to load target representations."}
+    )
+
     src_emb: str = field(
-        init=False, metadata={"help": "Path to load source representations."}
+        default="", metadata={"help": "Path to load source representations."}
     )
     tgt_emb: str = field(
-        init=False, metadata={"help": "Path to load target representations."}
+        default="", metadata={"help": "Path to load target representations."}
     )
     exp_name: str = field(
         default="", metadata={"help": "Path to log and store experiments."}
@@ -283,24 +328,28 @@ class MuseConfig:
         default=0, metadata={"help": "Minimum dictionary size (0 to disable)"}
     )
     dico_max_size: int = field(
-        default=0, metadata={"help": "Maximum dictionary size (0 to disable)"}
+        default=1000, metadata={"help": "Maximum dictionary size (0 to disable)"}
     )
     verbose: int = field(default=2, metadata={"help": "Verbosity level."})
     load_optim: bool = field(
         default=False, metadata={"help": "Load optimized results."}
     )
-    dico_root: str = field(
-        default=f"{II('common.dictionary_path')}/{II('dataset.dataset_name')}",
-        metadata={"help": "Path to save the dictionary."},
+
+    result_metrics_save_dir: str = field(
+        default=f"",
+        metadata={"help": "Path to save the resulting metrics of alignment."}
     )
-    vm_emb_root: str = field(
-        default=f"{II('common.embeddings_dataset_root')}/{ModelType.VM.value}/{II('dataset.dataset_name')}",
-        metadata={"help": "Path to save the vision model embeddings."},
+
+    dico_train: str = field(
+        default=MISSING,
+        metadata={"help": "Path to dico train."},
     )
-    lm_emb_root: str = field(
-        default=f"{II('common.embeddings_dataset_root')}/{ModelType.LM.value}",
-        metadata={"help": "Path to save the language model embeddings."},
+
+    dico_eval: str = field(
+        default=MISSING,
+        metadata={"help": "Path to dico eval."},
     )
+
 
     def __post_init__(self):
         self.more_exp = True if self.exp_type != ExperimentsType.BASE else False
@@ -311,17 +360,14 @@ class MuseConfig:
             ExperimentsType.FREQ: "freq",
             ExperimentsType.BASE: "base",
         }
-
         test_dict_folder = exp_dict_folders.get(self.exp_type, "base")
+        self.exp_name = "test_alignment"
         self.src_lang = self.vm
         self.tgt_lang = self.lm
-        self.emb_dim = self.dim
-        self.dico_train = f"{self.dico_root}/{self.exp_type.value}/{self.language}/train_{self.fold}_{self.data_type}.txt"
-        self.dico_eval = (
-            f"{self.dico_root}/{test_dict_folder}/{self.language}/test_{self.fold}_{self.data_type}.txt"
-        )
-        self.src_emb = f"{self.vm_emb_root}/{self.vm}_{self.emb_dim}.pth"
-        self.tgt_emb = f"{self.lm_emb_root}/{self.language}/{self.lm}_{self.emb_dim}.pth"
+        self.emb_dim = min(MODEL_CONFIGS[self.lm].dim, MODEL_CONFIGS[self.vm].dim)
+        self.src_emb = f"{II('common.embeddings_dataset_root')}/{ModelType.VM.value}/{self.vm_dataset}/aggregated/{self.vm}_{self.emb_dim}.pth"
+        self.tgt_emb = f"{II('common.embeddings_dataset_root')}/{ModelType.LM.value}/{self.language}/{self.layer_identifier}/{self.lm_dataset}/{self.lm}_{self.emb_dim}.pth"
+    
 
 
 @dataclass
@@ -352,5 +398,5 @@ class RunConfig:
     endpoint: EndpointConfig = field(default_factory=EndpointConfig)
     run_muse: bool = field(default=False, metadata={"help": "Run MUSE part."})
     
-    save_hugging_face: bool = field(default=False, metadata={"help": "Save files on hugging face."})
+    save_hugging_face: bool = field(default=False, metadata={"help": "Whether to save files on hugging face."})
     hugging_face_save_repo: HuggingFaceRepository = field(default_factory=HuggingFaceRepository)
