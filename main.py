@@ -9,7 +9,7 @@ from src.config import MODEL_CONFIGS, RunConfig
 from src.procrustes import MuseExp
 from src.rep_extractor import RepExtractor
 from src.utils.translation_utils import Translator, create_dummy_dataset
-from src.utils.utils_helper import reduce_dim
+# from src.utils.utils_helper import reduce_dim
 
 
 def setup_logging():
@@ -20,30 +20,15 @@ def setup_logging():
     )
 
 
-def prepare_translations(args: DictConfig) -> None:
-    """Prepare translated datasets for all languages"""
-    translator = Translator(config=args)
-    
-    # If source file doesn't exist, create a dummy dataset
-    source_file = Path("data") / f"{args.dataset.dataset_name}_sentences.json"
-    if not source_file.exists():
-        logging.info(f"Source file {source_file} not found. Creating dummy dataset.")
-        create_dummy_dataset(str(source_file))
-    
-    # Translate dataset to all languages
-    translator.translate_dataset(str(source_file))
-    print("-" * 25 + "Translation completed!" + "-" * 25)
-
-
 def get_reps(args: DictConfig) -> None:
     """Extract embeddings for the model specified in the config"""
     rep_extractor = RepExtractor(config=args)
     rep_extractor.process_embeddings()
     print("-" * 25 + "Extract and Decontextualize representation completed!" + "-" * 25)
 
-    # Optionally reduce dimensions 
-    if args.get("reduce_dim", False):
-        reduce_dim(args, MODEL_CONFIGS)
+    # # Optionally reduce dimensions 
+    # if args.get("reduce_dim", False):
+    #     reduce_dim(args, MODEL_CONFIGS)
 
 
 def run_muse(args: DictConfig) -> None:
@@ -91,8 +76,8 @@ def main(cfg: DictConfig) -> None:
     print("[DEBUG] Test print from main.py")
 
     # Prepare translations if needed
-    if cfg.get("prepare_translations", False):
-        prepare_translations(cfg)
+    # if cfg.get("prepare_translations", False):
+    #     prepare_translations(cfg)
     
     # If processing a specific language or model
     if not cfg.get("process_all_languages", False):
