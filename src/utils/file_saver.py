@@ -19,7 +19,7 @@ class FileSaver:
 
     def save(self, file_object, save_path):
         # save_path must contain the name of the file as well
-        
+
         if self.config.save_hugging_face:
             if isinstance(save_path, Path): save_path = str(save_path)
 
@@ -37,5 +37,5 @@ class FileSaver:
             )
         
         else:
-            # save locally
+            Path(save_path).parent.mkdir(parents=True, exist_ok=True)
             torch.save(file_object, save_path)
