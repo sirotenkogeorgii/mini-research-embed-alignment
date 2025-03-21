@@ -92,6 +92,8 @@ class VMEmbedding:
             
         print(f"Vision embeddings successfully extracted for {self.dataset_name}!")
 
+
+
     def _process_with_local_model(self) -> None:
         resolution = 224
         if self.model_name.startswith(("res", "efficient")):
@@ -105,7 +107,9 @@ class VMEmbedding:
         #     categories_encode, image_categories = self.__get_clip_reps()
 
 
+        # print(f"[DEBUG] categories_encode[0].shape: {categories_encode[0].shape}")
         embeddings = np.vstack(categories_encode)
+        # print(f"[DEBUG] embeddings.shape: {embeddings.shape}")
         embeddinds_dim = embeddings.shape[1]
         # embegginds_dim = embeddings.shape[-1]
         save_path = self.save_embeddings_path / "aggregated" / f"{self.model_name}_{embeddinds_dim}.pth"
@@ -130,10 +134,11 @@ class VMEmbedding:
 
     def __get_img2vec_pytorch_reps(self) -> Tuple[list, list]:
         img2vec = Img2Vec(model=self.model_name, cuda=torch.cuda.is_available())
+        use_tensor = not self.model_name.startswith("efficient")
         categories_encode = []
         image_categories = []
         for idx in range(len(self.labels)):
-            print(f"[DEBUG] Processing label {self.labels[idx]}...")
+            print(f"[DEBUG] ({idx + 1}) Processing label {self.labels[idx]}...")
             images = []
             category_path = self.dataset_path / self.labels[idx]
             if not category_path.exists(): 
@@ -148,7 +153,11 @@ class VMEmbedding:
                     print("Failed to PIL:", filename)
             with torch.no_grad():
                 print(f"[DEBUG] Images for a concept extraction: {len(images)}.")
-                reps = img2vec.get_vec(images, tensor=True).to("cpu").numpy().squeeze()
+                reps = img2vec.get_vec(images, tensor=use_tensor)
+                if use_tensor:
+                    reps = reps.to("cpu").numpy().squeeze()
+                # print(f'[DEBUG] reps.shape: {reps.shape}')
+                # print(f'[DEBUG] reps.mean(axis=0).shape: {reps.mean(axis=0).shape}')
                 categories_encode.append(reps.mean(axis=0))
                 image_categories.append(self.labels[idx])
 
