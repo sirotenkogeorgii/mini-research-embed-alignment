@@ -145,6 +145,26 @@ MODEL_CONFIGS = {
         dim=2048,
         model_type=ModelType.VM,
     ),
+    "efficientnet_b0": ModelInfo(
+        model_id="efficientnet_b0",
+        dim=1280,
+        model_type=ModelType.VM,
+    ),
+    "efficientnet_b2": ModelInfo(
+        model_id="efficientnet_b2",
+        dim=1408,
+        model_type=ModelType.VM,
+    ),
+    "efficientnet_b4": ModelInfo(
+        model_id="efficientnet_b2",
+        dim=1792,
+        model_type=ModelType.VM,
+    ),
+    "efficientnet_b6": ModelInfo(
+        model_id="efficientnet_b2",
+        dim=2304,
+        model_type=ModelType.VM,
+    ),
 }
 
 
