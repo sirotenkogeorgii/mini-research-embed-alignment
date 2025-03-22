@@ -156,12 +156,12 @@ MODEL_CONFIGS = {
         model_type=ModelType.VM,
     ),
     "efficientnet_b4": ModelInfo(
-        model_id="efficientnet_b2",
+        model_id="efficientnet_b4",
         dim=1792,
         model_type=ModelType.VM,
     ),
     "efficientnet_b6": ModelInfo(
-        model_id="efficientnet_b2",
+        model_id="efficientnet_b6",
         dim=2304,
         model_type=ModelType.VM,
     ),
