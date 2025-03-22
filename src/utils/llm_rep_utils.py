@@ -125,6 +125,9 @@ class LMEmbedding:
             cache_dir=cache_path,
             use_fast=False
         )
+        
+        if self.model_name.startswith(("gpt")):
+            tokenizer.pad_token = tokenizer.eos_token
 
         # Check for CUDA availability
         has_cuda = torch.cuda.is_available()
