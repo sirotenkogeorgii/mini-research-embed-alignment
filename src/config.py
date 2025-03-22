@@ -95,18 +95,30 @@ MODEL_CONFIGS = {
         dim=768,
         model_type=ModelType.LM,
     ),
+    "bert-medium": ModelInfo(
+        model_id="prajjwal1/bert-medium",
+        model_size=110,
+        dim=768,
+        model_type=ModelType.LM,
+    ),
     "bert-base-uncased": ModelInfo(
         model_id="google-bert/bert-base-uncased",
         model_size=110,
         dim=768,
         model_type=ModelType.LM,
     ),
-    "bert-base-multilingual-cased": ModelInfo(
-        model_id="bert-base-multilingual-cased",
-        model_size=110,
-        dim=768,
+    "bert-large-uncased": ModelInfo(
+        model_id="google-bert/bert-large-uncased",
+        model_size=340,
+        dim=1024,
         model_type=ModelType.LM,
     ),
+    # "bert-base-multilingual-cased": ModelInfo(
+    #     model_id="bert-base-multilingual-cased",
+    #     model_size=110,
+    #     dim=768,
+    #     model_type=ModelType.LM,
+    # ),
     "clip-ViT-B-32": ModelInfo(
         model_id="ViT-B/32",
         model_size=151,
