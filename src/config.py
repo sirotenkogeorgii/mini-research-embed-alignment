@@ -83,12 +83,6 @@ MODEL_CONFIGS = {
         dim=4096,
         model_type=ModelType.LM,
     ),
-    "opt-125m": ModelInfo(
-        model_id="facebook/opt-125m",
-        model_size=125,
-        dim=768,
-        model_type=ModelType.LM,
-    ),
     "distilbert-base-uncased": ModelInfo(
         model_id="distilbert/distilbert-base-uncased",
         model_size=67,
@@ -97,8 +91,8 @@ MODEL_CONFIGS = {
     ),
     "bert-medium": ModelInfo(
         model_id="prajjwal1/bert-medium",
-        model_size=110,
-        dim=768,
+        model_size=41,
+        dim=512,
         model_type=ModelType.LM,
     ),
     "bert-base-uncased": ModelInfo(
@@ -419,6 +413,14 @@ class MuseConfig:
         default=MISSING,
         metadata={"help": "Path to dico eval."},
     )
+
+    full_dict_path: str = field(
+        default="",
+        metadata={"help": "Path to full dico."},
+    )
+    use_sampling: bool = field(default=False)
+    sample_train_size: int = field(default=1000)
+    sample_iterations: int = field(default=5)
 
 
     def __post_init__(self):
