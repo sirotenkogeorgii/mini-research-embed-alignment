@@ -113,6 +113,44 @@ MODEL_CONFIGS = {
         dim=1024,
         model_type=ModelType.LM,
     ),
+
+    "opt-125m": ModelInfo(
+        model_id="facebook/opt-125m",
+        model_size=125,
+        dim=768,
+        model_type=ModelType.LM,
+    ),
+    "opt-350m": ModelInfo(
+        model_id="facebook/opt-350m",
+        model_size=350,
+        dim=1024,
+        model_type=ModelType.LM,
+    ),
+    "opt-1.3b": ModelInfo(
+        model_id="facebook/opt-1.3b",
+        model_size=1300,
+        dim=2048,
+        model_type=ModelType.LM,
+    ),
+
+    "gpt2": ModelInfo(
+        model_id="openai-community/gpt2",
+        model_size=117,
+        dim=768,
+        model_type=ModelType.LM,
+    ),
+    "gpt2-medium": ModelInfo(
+        model_id="openai-community/gpt2-medium",
+        model_size=345,
+        dim=1024,
+        model_type=ModelType.LM,
+    ),
+    "gpt2-large": ModelInfo(
+        model_id="openai-community/gpt2-large",
+        model_size=774,
+        dim=1280,
+        model_type=ModelType.LM,
+    ),
     # "bert-base-multilingual-cased": ModelInfo(
     #     model_id="bert-base-multilingual-cased",
     #     model_size=110,
