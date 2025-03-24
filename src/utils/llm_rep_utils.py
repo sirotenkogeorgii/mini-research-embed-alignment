@@ -271,10 +271,12 @@ class LMEmbedding:
         if self.config.model.last_n_hidden_states is not None:
             total_layers = len(hidden_states)
             start_layer_idx = max(0, total_layers - self.last_n_hidden_states)
+            if self.model_name == "opt-350m": return hidden_states[max(0, start_layer_idx - 1): -1]
             print("[DEBUG] Last several layers were used.")
             return hidden_states[start_layer_idx:]
             
         print(f"[DEBUG] The {self.config.model.specific_last_hidden_state} last layer was used.")
+        if self.model_name == "opt-350m": [hidden_states[-self.config.model.specific_last_hidden_state - 1]]
         return [hidden_states[-self.config.model.specific_last_hidden_state]]
         
 
@@ -317,6 +319,7 @@ class LMEmbedding:
     def _average_layers_embedding(self, selected_layers: List[torch.Tensor], sentence_idx: int, words_mask: list) -> np.ndarray:
         """Get embedding by averaging across selected layers"""
         # print(f"[DEBUG](_average_layers_embedding) selected last layers: {len(selected_layers)}. Shape of the layer: {selected_layers[0].shape}")
+        for i, layer in enumerate(selected_layers): print(f"Layer #{i} dim = {layer[sentence_idx].shape}.")
         layers_emb = torch.stack([layer[sentence_idx] for layer in selected_layers])
         avg_emb = torch.mean(layers_emb, dim=0)
         # Keep on GPU until the last moment
