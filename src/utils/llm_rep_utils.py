@@ -125,7 +125,7 @@ class LMEmbedding:
             cache_dir=cache_path,
             use_fast=False
         )
-        
+
         if self.model_name.startswith(("gpt")):
             tokenizer.pad_token = tokenizer.eos_token
 
@@ -179,6 +179,7 @@ class LMEmbedding:
             torch.inference_mode(True)
 
         return model, tokenizer
+
 
 
     def _process_with_local_model(self, dataset: Dataset) -> None:
@@ -256,7 +257,7 @@ class LMEmbedding:
 
     def _tokenize_and_run_model(self, batch: list, tokenizer: Any, model: Any) -> Tuple[Any, List[torch.Tensor]]:
         """Tokenize input and run model to get hidden states"""
-        tokens = tokenizer(batch, padding=True, truncation=True, return_tensors="pt").to(model.device)
+        tokens = tokenizer(batch, padding=True, return_tensors="pt").to(model.device)
         
         with torch.no_grad():
             outputs = model(**tokens, output_hidden_states=True)
