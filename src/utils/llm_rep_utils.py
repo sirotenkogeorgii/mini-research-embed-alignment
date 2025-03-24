@@ -276,7 +276,7 @@ class LMEmbedding:
             return hidden_states[start_layer_idx:]
             
         print(f"[DEBUG] The {self.config.model.specific_last_hidden_state} last layer was used.")
-        if self.model_name == "opt-350m": [hidden_states[-self.config.model.specific_last_hidden_state - 1]]
+        if self.model_name == "opt-350m": return [hidden_states[-self.config.model.specific_last_hidden_state - 1]]
         return [hidden_states[-self.config.model.specific_last_hidden_state]]
         
 
