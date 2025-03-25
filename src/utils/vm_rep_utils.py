@@ -181,6 +181,7 @@ class VMEmbedding:
         feature_extractor = AutoFeatureExtractor.from_pretrained(
             self.model_id, cache_dir=cache_path
         )
+        print("[DEBUGGGGGGGG](-2) Hi!")
         if not self.model_name.startswith("resnet"):
             # actual model
             model = AutoModel.from_pretrained(
@@ -193,13 +194,16 @@ class VMEmbedding:
 
         model = model.eval()
 
+        print("[DEBUGGGGGGGG](-1) Hi!")
         imageset = ImageDataset(
             # self.image_dir, self.labels, feature_extractor, resolution
             self.dataset_path, self.labels, feature_extractor, resolution
         )
+        print("[DEBUGGGGGGGG](0) Hi!")
         image_dataloader = torch.utils.data.DataLoader(
             imageset, batch_size=self.bs, num_workers=4, pin_memory=True
         )
+        print("[DEBUGGGGGGGG](1) Hi!")
 
         # images_name = []
         categories_encode = []
@@ -210,12 +214,14 @@ class VMEmbedding:
             image_dataloader,
             mininterval=60.0, maxinterval=360.0
         ):
+            print("[DEBUGGGGGGGG](2) Hi!")
             inputs_shape = inputs.shape
             inputs = inputs.reshape(
                 -1, inputs_shape[2], inputs_shape[3], inputs_shape[4]
             ).to(self.device[0])
 
             with torch.no_grad():
+                print("[DEBUGGGGGGGG](3) Hi!")
                 outputs = model(pixel_values=inputs)
                 if self.model_name.startswith("vit"):
                     chunks = torch.chunk(
