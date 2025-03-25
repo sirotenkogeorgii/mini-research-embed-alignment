@@ -63,10 +63,7 @@ class ModelInfo:
     )
 
     def __post_init__(self):
-        if self.model_id in ["ViT-B/32", "ViT-L/14", "RN50", "RN101", "RN50x64"]:
-            self.model_name = f"clip-{self.model_id.replace('/', '-')}"
-        else:
-            self.model_name = self.model_id.split("/")[-1]
+        self.model_name = self.model_id.split("/")[-1]
 
         if self.last_n_hidden_states is not None and self.specific_last_hidden_state is not None:
             raise Exception("At least one of them must be None [last_n_hidden_states, specific_last_hidden_state]!")
@@ -77,7 +74,7 @@ class ModelInfo:
 # 128, 256, 512, 768, 1024, 1280, 4096, 
 
 MODEL_CONFIGS = {
-    "Llama-2-7b": ModelInfo(
+    "llama-2-7b": ModelInfo(
         model_id="meta-llama/Llama-2-7b-hf",
         model_size=6740,
         dim=4096,
@@ -145,21 +142,28 @@ MODEL_CONFIGS = {
         dim=1280,
         model_type=ModelType.LM,
     ),
-    # "bert-base-multilingual-cased": ModelInfo(
-    #     model_id="bert-base-multilingual-cased",
-    #     model_size=110,
-    #     dim=768,
-    #     model_type=ModelType.LM,
-    # ),
-    "clip-ViT-B-32": ModelInfo(
-        model_id="ViT-B/32",
-        model_size=151,
-        dim=512,
+
+    "vit-base-patch16-224": ModelInfo(
+        model_id="google/vit-base-patch16-224",
+        model_size=86,
+        dim=768,
         model_type=ModelType.VM,
     ),
-    "clip-ViT-L-14": ModelInfo(
-        model_id="ViT-L/14",
-        model_size=427,
+    "vit-large-patch16-224": ModelInfo(
+        model_id="google/vit-large-patch16-224",
+        model_size=304,
+        dim=1024,
+        model_type=ModelType.VM,
+    ),
+    "dino-vits16": ModelInfo(
+        model_id="facebook/dino-vits16",
+        model_size=22,
+        dim=384,
+        model_type=ModelType.VM,
+    ),
+    "dino-vitb16": ModelInfo(
+        model_id="facebook/dino-vitb16",
+        model_size=86,
         dim=768,
         model_type=ModelType.VM,
     ),
@@ -324,7 +328,7 @@ class MuseConfig:
     lm_dataset: str = field(default="common-words-79k", metadata={"help": "Source dataset for the language embeddings."})
     vm_dataset: str = field(default="imagenet-ul-ex-1k-train-subset", metadata={"help": "Source dataset for the vision embeddings."})
     lm: str = field(default="bert-base-uncased", metadata={"help": "Language model name."})
-    vm: str = field(default="clip-ViT-B-32", metadata={"help": "Vision model name."})
+    vm: str = field(default="resnet18", metadata={"help": "Vision model name."})
     language: str = field(default="english", metadata={"help": "Language to use for alignment."})
     dim: int = field(default=768, metadata={"help": "Dimension of the embeddings."})
     layer_identifier: str = field(default="layer_1", metadata={"help": "From what layer the language embeddings were extracted"})
@@ -422,6 +426,10 @@ class MuseConfig:
     sample_train_size: int = field(default=1000)
     sample_iterations: int = field(default=5)
 
+    topk: int = field(default=100)
+    save_embeddings_dir: str = field(default="")
+    save_word2id_dir: str = field(default="")
+    # save_word2id_dir: str = field(default="")
 
     def __post_init__(self):
         self.more_exp = True if self.exp_type != ExperimentsType.BASE else False
