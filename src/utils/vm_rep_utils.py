@@ -32,6 +32,7 @@ class ImageDataset(Dataset):
 
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, Tuple[str, int]]:
         images = []
+        print("[DEBUG](ImageDataset)(0)")
         category_path = self.dataset_path / self.labels[index]
         for filename in category_path.iterdir():
             try:
@@ -39,17 +40,20 @@ class ImageDataset(Dataset):
             except:
                 print("Failed to pil", filename)
 
+        print("[DEBUG](ImageDataset)(1)")
 
         category_size = len(images)
         inputs = torch.zeros(
             self.MAX_SIZE, self.CHANNELS, self.RESOLUTION_HEIGHT, self.RESOLUTION_WIDTH
         )
+        print("[DEBUG](ImageDataset)(2)")
         try:
             values = self.extractor(images=images, return_tensors="pt")
             with torch.no_grad():
                 inputs[:category_size, :, :, :].copy_(values.pixel_values) # TODO: copy (e)
         except:
             print("*" * 20 + "Failed to extract" + "*" * 20, category_path)
+        print("[DEBUG](ImageDataset)(3)")
 
         return inputs, (self.labels[index], category_size)
 
@@ -138,11 +142,11 @@ class VMEmbedding:
         categories_encode = []
         image_categories = []
         for idx in range(len(self.labels)):
-            print(f"[DEBUG] ({idx + 1}) Processing label {self.labels[idx]}...")
+            # print(f"[DEBUG] ({idx + 1}) Processing label {self.labels[idx]}...")
             images = []
             category_path = self.dataset_path / self.labels[idx]
             if not category_path.exists(): 
-                print(f"[DEBUG] Image class {self.labels[idx]} was not found.")
+                # print(f"[DEBUG] Image class {self.labels[idx]} was not found.")
                 continue
             for file_i, filename in enumerate(category_path.iterdir()):
                 try:
@@ -152,7 +156,7 @@ class VMEmbedding:
                 except:
                     print("Failed to PIL:", filename)
             with torch.no_grad():
-                print(f"[DEBUG] Images for a concept extraction: {len(images)}.")
+                # print(f"[DEBUG] Images for a concept extraction: {len(images)}.")
                 reps = img2vec.get_vec(images, tensor=use_tensor)
                 if use_tensor:
                     reps = reps.to("cpu").numpy().squeeze()
@@ -181,7 +185,7 @@ class VMEmbedding:
         feature_extractor = AutoFeatureExtractor.from_pretrained(
             self.model_id, cache_dir=cache_path
         )
-        print("[DEBUGGGGGGGG](-2) Hi!")
+        # print("[DEBUGGGGGGGG](-2) Hi!")
         if not self.model_name.startswith("resnet"):
             # actual model
             model = AutoModel.from_pretrained(
@@ -194,34 +198,31 @@ class VMEmbedding:
 
         model = model.eval()
 
-        print("[DEBUGGGGGGGG](-1) Hi!")
+        # print("[DEBUGGGGGGGG](-1) Hi!")
         imageset = ImageDataset(
             # self.image_dir, self.labels, feature_extractor, resolution
             self.dataset_path, self.labels, feature_extractor, resolution
         )
-        print("[DEBUGGGGGGGG](0) Hi!")
+        # print("[DEBUGGGGGGGG](0) Hi!")
         image_dataloader = torch.utils.data.DataLoader(
             imageset, batch_size=self.bs, num_workers=4, pin_memory=True
         )
-        print("[DEBUGGGGGGGG](1) Hi!")
+        # print("[DEBUGGGGGGGG](1) Hi!")
 
         # images_name = []
         categories_encode = []
         image_categories = []
 
         # iterate over labels in abtch (__getitem__ returns all preprocessed images for labels in batch)
-        for inputs, (names, category_size) in tqdm(
-            image_dataloader,
-            mininterval=60.0, maxinterval=360.0
-        ):
-            print("[DEBUGGGGGGGG](2) Hi!")
+        for inputs, (names, category_size) in tqdm(image_dataloader):
+            # print("[DEBUGGGGGGGG](2) Hi!")
             inputs_shape = inputs.shape
             inputs = inputs.reshape(
                 -1, inputs_shape[2], inputs_shape[3], inputs_shape[4]
-            ).to(self.device[0])
+            ).to(self.device)
 
             with torch.no_grad():
-                print("[DEBUGGGGGGGG](3) Hi!")
+                # print("[DEBUGGGGGGGG](3) Hi!")
                 outputs = model(pixel_values=inputs)
                 if self.model_name.startswith("vit"):
                     chunks = torch.chunk(
