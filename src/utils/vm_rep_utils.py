@@ -189,7 +189,7 @@ class VMEmbedding:
                 output_hidden_states=True,
                 return_dict=True,
             )
-            model = model.to(self.device[0])
+            model = model.to(self.device)
 
         model = model.eval()
 
@@ -219,6 +219,13 @@ class VMEmbedding:
                 outputs = model(pixel_values=inputs)
                 if self.model_name.startswith("vit"):
                     chunks = torch.chunk(
+                        # outputs.hidden_states[-1][:, 1:, :].cpu(),
+                        outputs.hidden_states[-2][:, 1:, :].cpu(), # in ViT we test to extract last hidden state
+                        inputs_shape[0], # number of batches
+                        dim=0,
+                    )
+                elif self.model_name.startswith("dino"):
+                    chunks = torch.chunk(
                         outputs.hidden_states[-1][:, 1:, :].cpu(),
                         inputs_shape[0], # number of batches
                         dim=0,
@@ -232,7 +239,8 @@ class VMEmbedding:
 
                 # features for every image (iterate over images)
                 for idx, chip in enumerate(chunks):
-                    if self.model_name.startswith("vit"):
+                    # if self.model_name.startswith("vit"):
+                    if self.model_name.startswith(("dino", "vit")):
                         images_features = np.mean(
                             chip[:category_size[idx]].numpy(),
                             axis=1,
