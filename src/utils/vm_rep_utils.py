@@ -32,7 +32,7 @@ class ImageDataset(Dataset):
 
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, Tuple[str, int]]:
         images = []
-        print("[DEBUG](ImageDataset)(0)")
+        # print("[DEBUG](ImageDataset)(0)")
         category_path = self.dataset_path / self.labels[index]
         for filename in category_path.iterdir():
             try:
@@ -40,20 +40,20 @@ class ImageDataset(Dataset):
             except:
                 print("Failed to pil", filename)
 
-        print("[DEBUG](ImageDataset)(1)")
+        # print("[DEBUG](ImageDataset)(1)")
 
         category_size = len(images)
         inputs = torch.zeros(
             self.MAX_SIZE, self.CHANNELS, self.RESOLUTION_HEIGHT, self.RESOLUTION_WIDTH
         )
-        print("[DEBUG](ImageDataset)(2)")
+        # print("[DEBUG](ImageDataset)(2)")
         try:
             values = self.extractor(images=images, return_tensors="pt")
             with torch.no_grad():
                 inputs[:category_size, :, :, :].copy_(values.pixel_values) # TODO: copy (e)
         except:
             print("*" * 20 + "Failed to extract" + "*" * 20, category_path)
-        print("[DEBUG](ImageDataset)(3)")
+        # print("[DEBUG](ImageDataset)(3)")
 
         return inputs, (self.labels[index], category_size)
 
