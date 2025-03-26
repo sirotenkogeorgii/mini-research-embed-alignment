@@ -104,7 +104,7 @@ class LMEmbedding:
         # In a real implementation, this would load the translated dataset
         # For demonstration, we'll create a dummy dataset
 
-        dataset = load_dataset(self.config.dataset.language_data.dataset_name_hf, split="whole")
+        dataset = load_dataset(self.config.dataset.language_data.dataset_name_hf, split="whole", token=self.config.hugging_face_save_repo.token)
         shuffled = dataset.shuffle(seed=self.config.common.seed)
 
         dataset_size = 79_000 if self.config.dataset.language_data.dataset_size is None \
