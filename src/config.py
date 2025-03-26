@@ -98,7 +98,7 @@ MODEL_CONFIGS = {
         dim=768,
         model_type=ModelType.LM,
     ),
-    "bert-base-uncased-ru": ModelInfo(
+    "bert-base-cased-ru": ModelInfo(
         model_id="DeepPavlov/rubert-base-cased",
         model_size=110,
         dim=768,
