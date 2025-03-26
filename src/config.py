@@ -98,6 +98,12 @@ MODEL_CONFIGS = {
         dim=768,
         model_type=ModelType.LM,
     ),
+    "bert-base-uncased-ru": ModelInfo(
+        model_id="DeepPavlov/rubert-base-cased",
+        model_size=110,
+        dim=768,
+        model_type=ModelType.LM,
+    ),
     "bert-large-uncased": ModelInfo(
         model_id="google-bert/bert-large-uncased",
         model_size=340,
