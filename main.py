@@ -93,5 +93,15 @@ def main(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
+    import inspect
+
+    if not hasattr(inspect, "getargspec"):
+        def _getargspec_patch(f):
+            from inspect import getfullargspec
+            spec = getfullargspec(f)
+            return spec.args, spec.varargs, spec.varkw, spec.defaults
+
+        inspect.getargspec = _getargspec_patch
+
     load_dotenv("./.env")
     main() 
