@@ -300,7 +300,7 @@ class LMEmbedding:
         for sentence_idx, alias in enumerate(related_alias):
 
             current_sentence = batch[sentence_idx]
-            replaced_alias = alias.replace("_", " ")
+            replaced_alias = alias.replace("_", " ").replace(".", "").strip() # "translation_abc ." ->  "translation abc"
 
             if replaced_alias not in current_sentence:
                 print(f"[DEBUG] {replaced_alias} is not in {current_sentence}")
@@ -415,8 +415,6 @@ class LMEmbedding:
         # BERT uses WordPiece tokenization with ## for subwords
         # tokens = tokenizer.tokenize(sentence.lower())
         # target_tokens = tokenizer.tokenize(target_word.lower())
-
-        target_word = target_word.replace(".", "").strip()
 
         tokens = tokenizer.tokenize(sentence)
         target_tokens = tokenizer.tokenize(target_word)
