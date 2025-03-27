@@ -293,9 +293,12 @@ class LMEmbedding:
         
         # NOTE: In other words it's iteration over batch
         for sentence_idx, alias in enumerate(related_alias):
+            
             current_sentence = batch[sentence_idx]
-            if alias not in current_sentence:
-                print(f"[DEBUG] {alias} is not in {current_sentence}")
+            replaced_alias = alias.replace("_", " ")
+
+            if replaced_alias not in current_sentence:
+                print(f"[DEBUG] {replaced_alias} is not in {current_sentence}")
                 continue
 
             # Get tokens for the current sentence
@@ -303,7 +306,7 @@ class LMEmbedding:
             mask = tokens.attention_mask[sentence_idx]
             
             # Identify tokens corresponding to the alias
-            target_tokens_indices = self.map_word_to_token_ind(current_sentence, alias.replace("_", " "), tokenizer, mask.tolist(), input_ids.tolist())
+            target_tokens_indices = self.map_word_to_token_ind(current_sentence, replaced_alias, tokenizer, mask.tolist(), input_ids.tolist())
             
             if target_tokens_indices != []:
                 aliases.append(alias)
