@@ -6,6 +6,9 @@ from itertools import chain
 from pathlib import Path
 from typing import Any, Tuple, Dict, List, Optional, Union
 
+import string
+import pymorphy2
+
 import duckdb
 import numpy as np
 import torch
@@ -35,7 +38,9 @@ class LMEmbedding:
         self.save_embeddings_path: Path = (
                 Path(args.common.embeddings_dataset_root) / self.current_language / layers_to_extract_str / self.dataset_name
         )
+        
 
+        self.morph = pymorphy2.MorphAnalyzer()
         
         # Store embedding options
         self.emb_per_object: bool = args.common.emb_per_object
@@ -293,7 +298,7 @@ class LMEmbedding:
         
         # NOTE: In other words it's iteration over batch
         for sentence_idx, alias in enumerate(related_alias):
-            
+
             current_sentence = batch[sentence_idx]
             replaced_alias = alias.replace("_", " ")
 
@@ -410,8 +415,20 @@ class LMEmbedding:
         # BERT uses WordPiece tokenization with ## for subwords
         # tokens = tokenizer.tokenize(sentence.lower())
         # target_tokens = tokenizer.tokenize(target_word.lower())
+
+        target_word = target_word.replace(".", "").strip()
+
         tokens = tokenizer.tokenize(sentence)
         target_tokens = tokenizer.tokenize(target_word)
+
+        def lemmatize_bert_token(token: str) -> str:
+            clean = token.replace("##", "").lower()
+            parses = self.morph.parse(clean)
+            return parses[0].normal_form if parses else clean
+
+        tokens = [lemmatize_bert_token(t) for t in tokens]
+        target_tokens = [lemmatize_bert_token(t) for t in target_tokens]
+
 
         # Find potential matches in the tokenized sentence
         matches = []
