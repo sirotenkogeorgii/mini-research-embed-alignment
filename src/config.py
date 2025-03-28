@@ -100,6 +100,7 @@ MODEL_CONFIGS = {
     ),
 
     ####### russian langue models #######
+    ### BERT
     "bert-base-cased-ru": ModelInfo(
         model_id="DeepPavlov/rubert-base-cased",
         model_size=110,
@@ -116,6 +117,64 @@ MODEL_CONFIGS = {
         model_id="ai-forever/ruBert-large",
         model_size=427,
         dim=1024,
+        model_type=ModelType.LM,
+    ),
+
+    ### GPT-2
+    "rugpt3small_based_on_gpt2": ModelInfo(
+        model_id="ai-forever/rugpt3small_based_on_gpt2",
+        model_size=125,
+        dim=768,
+        model_type=ModelType.LM,
+    ),
+    "rugpt3medium_based_on_gpt2": ModelInfo(
+        model_id="ai-forever/rugpt3medium_based_on_gpt2",
+        model_size=355,
+        dim=1024,
+        model_type=ModelType.LM,
+    ),
+    "rugpt3large_based_on_gpt2": ModelInfo(
+        model_id="ai-forever/rugpt3large_based_on_gpt2",
+        model_size=760,
+        dim=1536,
+        model_type=ModelType.LM,
+    ),
+    #####################################
+
+
+
+    ####### german langue models #######
+    ### BERT
+    "gbert-base": ModelInfo(
+        model_id="deepset/gbert-base",
+        model_size=110,
+        dim=768,
+        model_type=ModelType.LM,
+    ),
+    "gbert-large": ModelInfo(
+        model_id="deepset/gbert-large",
+        model_size=335,
+        dim=1024,
+        model_type=ModelType.LM,
+    ),
+
+    ### GPT-2
+    "german-gpt2": ModelInfo(
+        model_id="german-gpt2",
+        model_size=137,
+        dim=768,
+        model_type=ModelType.LM,
+    ),
+    "german-gpt2-medium": ModelInfo(
+        model_id="kkirchheim/german-gpt2-medium",
+        model_size=358,
+        dim=1024,
+        model_type=ModelType.LM,
+    ),
+    "german-gpt2-larger": ModelInfo(
+        model_id="stefan-it/german-gpt2-larger",
+        model_size=774,
+        dim=1280,
         model_type=ModelType.LM,
     ),
     #####################################
