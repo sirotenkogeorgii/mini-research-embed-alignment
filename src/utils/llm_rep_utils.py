@@ -503,48 +503,102 @@ class LMEmbedding:
         # If no matches found, use fallback method
         return self._map_fallback(tokens, words_mask)
     
-    def _map_gpt2_tokens(self, sentence: str, target_word: str, tokenizer: Any, words_mask: list) -> list:
-        """Map tokens for GPT-2 models which use byte-level BPE"""
-        # GPT-2 uses byte-level BPE, similar to RoBERTa but with different prefixes
-        tokens = tokenizer.tokenize(sentence.lower())
+    # def _map_gpt2_tokens(self, sentence: str, target_word: str, tokenizer: Any, words_mask: list) -> list:
+    #     """Map tokens for GPT-2 models which use byte-level BPE"""
+    #     # GPT-2 uses byte-level BPE, similar to RoBERTa but with different prefixes
+    #     tokens = tokenizer.tokenize(sentence.lower())
 
-        # TODO: Optimization is possible. We can take into account the possition of the target word in the sentence.
-        # Try different prefix combinations for GPT-2
+    #     # TODO: Optimization is possible. We can take into account the possition of the target word in the sentence.
+    #     # Try different prefix combinations for GPT-2
 
-        target_word = target_word.lower()
-        target_variations = [
-            tokenizer.tokenize(target_word),
-            tokenizer.tokenize(" " + target_word),
-            tokenizer.tokenize("  " + target_word)
-        ]
+    #     target_word = target_word.lower()
+    #     target_variations = [
+    #         tokenizer.tokenize(target_word),
+    #         tokenizer.tokenize(" " + target_word),
+    #         tokenizer.tokenize("  " + target_word)
+    #     ]
         
+    #     for target_tokens in target_variations:
+    #         matches = []
+    #         for i in range(len(tokens) - len(target_tokens) + 1):
+    #             match = True
+    #             for j in range(len(target_tokens)):
+    #                 if i + j >= len(tokens) or tokens[i + j] != target_tokens[j]:
+    #                     match = False
+    #                     break
+    #             if match:
+    #                 matches.append(list(range(i, i + len(target_tokens))))
+            
+    #         # If we have matches, use the first one
+    #         if matches:
+    #             return [idx for idx in matches[0] if idx < len(words_mask) and words_mask[idx] == 1]
+        
+    #     print()
+    #     print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on sentence: {sentence}")
+    #     print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on target_word: {target_word}")
+    #     print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on target_tokens [0]: {target_variations[0]}")
+    #     print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on target_tokens [1]: {target_variations[1]}")
+    #     print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on target_tokens [2]: {target_variations[2]}")
+    #     print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on tokens {tokens}")
+    #     print()
+
+    #     # If no matches found, use fallback method
+    #     return self._map_fallback(tokens, words_mask)
+    
+    def _map_gpt2_tokens(self, sentence: str, target_word: str, tokenizer: Any, words_mask: list) -> list:
+        """Map tokens for GPT-2 models which use byte-level BPE with lemmatization similar to BERT."""
+
+        # Tokenize the sentence without lower-casing it up front; we'll handle it in the lemmatizer
+        tokens = tokenizer.tokenize(sentence)
+
+        # Define a helper for lemmatization, removing GPT-2's leading space marker (e.g., "Ġ")
+        def lemmatize_gpt2_token(token: str) -> str:
+            clean = token.lstrip("Ġ").lower()  # Remove the GPT-2 prefix marker and lower-case
+            parses = self.morph.parse(clean)
+            return parses[0].normal_form if parses else clean
+
+        # Lemmatize all tokens in the sentence
+        tokens = [lemmatize_gpt2_token(t) for t in tokens]
+
+        # Lowercase the target word and create variations with potential preceding spaces.
+        target_word_lower = target_word.lower()
+        target_variations = [
+            [lemmatize_gpt2_token(t) for t in tokenizer.tokenize(target_word_lower)],
+            [lemmatize_gpt2_token(t) for t in tokenizer.tokenize(" " + target_word_lower)],
+            [lemmatize_gpt2_token(t) for t in tokenizer.tokenize("  " + target_word_lower)]
+        ]
+
+        # Iterate over the target token variations to search for a match in the sentence tokens.
         for target_tokens in target_variations:
             matches = []
             for i in range(len(tokens) - len(target_tokens) + 1):
                 match = True
                 for j in range(len(target_tokens)):
-                    if i + j >= len(tokens) or tokens[i + j] != target_tokens[j]:
+                    if tokens[i + j] != target_tokens[j]:
                         match = False
                         break
                 if match:
                     matches.append(list(range(i, i + len(target_tokens))))
             
-            # If we have matches, use the first one
+            # Return indices from the first successful match that also pass the words_mask check.
             if matches:
                 return [idx for idx in matches[0] if idx < len(words_mask) and words_mask[idx] == 1]
-        
+
+        # Debug prints if no match was found
         print()
         print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on sentence: {sentence}")
-        print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on target_word: {target_word}")
+        print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on target_word: {target_word_lower}")
         print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on target_tokens [0]: {target_variations[0]}")
         print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on target_tokens [1]: {target_variations[1]}")
         print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on target_tokens [2]: {target_variations[2]}")
-        print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on tokens {tokens}")
+        print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on tokens: {tokens}")
         print()
 
-        # If no matches found, use fallback method
+        # Fallback mapping if no direct match is found.
         return self._map_fallback(tokens, words_mask)
-    
+
+
+
     def _map_llama_family_tokens(self, sentence: str, target_word: str, tokenizer: Any, words_mask: list) -> list:
         """Map tokens for LLaMA, OPT, Mixtral models which use SentencePiece or similar tokenizers"""
         # Check specific LLaMA version
