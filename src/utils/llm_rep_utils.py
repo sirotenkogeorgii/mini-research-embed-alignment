@@ -63,8 +63,11 @@ class LMEmbedding:
         self.con.commit()
         self.con.execute(f"CREATE TABLE IF NOT EXISTS data (alias VARCHAR, embedding FLOAT[{self.model_dim}])")
 
+        self.skipped_sentences = 0
+
     def get_lm_layer_representations(self) -> None:
         """Extract language model representations"""
+        self.skipped_sentences = 0
         
         file_to_save = self.save_embeddings_path / f"{self.model_name}_{self.model_dim}.pth"
         if file_to_save.exists():
@@ -229,6 +232,8 @@ class LMEmbedding:
                 self.con.executemany("INSERT INTO data VALUES (?, ?)", all_insert_data)
                 self.con.commit()
                 all_insert_data = []
+        
+        print(f"Number of skipped sentences: {self.skipped_sentences}.")
 
         # Insert any remaining data
         if all_insert_data:
@@ -322,6 +327,9 @@ class LMEmbedding:
                     embedding = self._get_last_layer_embedding(selected_layers, sentence_idx, target_tokens_indices)
                     
                 embeddings.append(embedding)
+            
+            else:
+                self.skipped_sentences += 1
             
         return embeddings, aliases
     
