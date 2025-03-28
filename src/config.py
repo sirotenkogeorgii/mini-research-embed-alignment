@@ -98,12 +98,28 @@ MODEL_CONFIGS = {
         dim=768,
         model_type=ModelType.LM,
     ),
+
+    ####### russian langue models #######
     "bert-base-cased-ru": ModelInfo(
         model_id="DeepPavlov/rubert-base-cased",
         model_size=110,
         dim=768,
         model_type=ModelType.LM,
     ),
+    "ruBert-base": ModelInfo(
+        model_id="ai-forever/ruBert-base",
+        model_size=178,
+        dim=768,
+        model_type=ModelType.LM,
+    ),
+    "ruBert-large": ModelInfo(
+        model_id="ai-forever/ruBert-large",
+        model_size=427,
+        dim=1024,
+        model_type=ModelType.LM,
+    ),
+    #####################################
+
     "bert-large-uncased": ModelInfo(
         model_id="google-bert/bert-large-uncased",
         model_size=340,
