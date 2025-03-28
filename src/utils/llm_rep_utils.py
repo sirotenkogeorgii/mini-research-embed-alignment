@@ -556,35 +556,47 @@ class LMEmbedding:
     def _map_gpt2_tokens(self, sentence: str, target_word: str, tokenizer: Any, words_mask: list) -> list:
         """Map tokens for GPT-2 models which use byte-level BPE with lemmatization similar to BERT."""
 
-        # Tokenize the sentence without lower-casing it up front; we'll handle it in the lemmatizer
+        # Tokenize the sentence normally
         tokens = tokenizer.tokenize(sentence.lower())
 
-        # Define a helper for lemmatization, removing GPT-2's leading space marker (e.g., "Ġ")
-        def lemmatize_gpt2_token(token: str) -> str:
-            clean = token.lstrip("Ġ").lower()  # Remove the GPT-2 prefix marker and lower-case
-            parses = self.morph.parse(clean)
-            return parses[0].normal_form if parses else clean
+        # Fix encoding, remove GPT-2 marker, lowercase, and lemmatize
+        def fix_and_lemmatize(token: str) -> str:
+            try:
+                token = token.encode('latin-1').decode('utf-8')
+            except UnicodeEncodeError:
+                pass
+            if token.startswith("Ġ"):
+                token = token[1:]
+            token = token.lower()
+            parses = self.morph.parse(token)
+            return parses[0].normal_form if parses else token
 
-        # Lemmatize all tokens in the sentence
-        tokens = [lemmatize_gpt2_token(t) for t in tokens]
+        # Process sentence tokens
+        tokens = [fix_and_lemmatize(t) for t in tokens]
 
-        # Lowercase the target word and create variations with potential preceding spaces.
+        # Prepare target token variations with different preceding spaces.
         target_word_lower = target_word.lower()
         target_variations = [
-            [lemmatize_gpt2_token(t) for t in tokenizer.tokenize(target_word_lower)],
-            [lemmatize_gpt2_token(t) for t in tokenizer.tokenize(" " + target_word_lower)],
-            [lemmatize_gpt2_token(t) for t in tokenizer.tokenize("  " + target_word_lower)]
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower)],
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize(" " + target_word_lower)],
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize("  " + target_word_lower)]
         ]
 
-        # Iterate over the target token variations to search for a match in the sentence tokens.
+        # Iterate over variations and try to match the sequence of tokens.
         for target_tokens in target_variations:
+            # Remove empty tokens, if any
+            target_tokens = [t for t in target_tokens if t]
             matches = []
             for i in range(len(tokens) - len(target_tokens) + 1):
                 match = True
                 for j in range(len(target_tokens)):
-                    if tokens[i + j] != target_tokens[j]:
-                        match = False
-                        break
+                    token_sentence = tokens[i + j]
+                    token_target = target_tokens[j]
+                    # Direct match; if not, try comparing after stripping punctuation
+                    if token_sentence != token_target:
+                        if token_sentence.strip(string.punctuation) != token_target.strip(string.punctuation):
+                            match = False
+                            break
                 if match:
                     matches.append(list(range(i, i + len(target_tokens))))
             
