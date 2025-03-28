@@ -549,7 +549,7 @@ class LMEmbedding:
         """Map tokens for GPT-2 models which use byte-level BPE with lemmatization similar to BERT."""
 
         # Tokenize the sentence without lower-casing it up front; we'll handle it in the lemmatizer
-        tokens = tokenizer.tokenize(sentence)
+        tokens = tokenizer.tokenize(sentence.lower())
 
         # Define a helper for lemmatization, removing GPT-2's leading space marker (e.g., "Ġ")
         def lemmatize_gpt2_token(token: str) -> str:
