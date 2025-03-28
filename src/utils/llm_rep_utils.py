@@ -554,24 +554,26 @@ class LMEmbedding:
     #     return self._map_fallback(tokens, words_mask)
     
     def _map_gpt2_tokens(self, sentence: str, target_word: str, tokenizer: Any, words_mask: list) -> list:
-        """Map tokens for GPT-2 models which use byte-level BPE with lemmatization similar to BERT."""
-
+        """Map tokens for GPT-2 models with encoding fix, lemmatization, and punctuation normalization."""
+        import string
         # Tokenize the sentence normally
         tokens = tokenizer.tokenize(sentence.lower())
 
-        # Fix encoding, remove GPT-2 marker, lowercase, and lemmatize
+        # A safer helper: try to fix misencoded tokens; if that fails, use the original token.
         def fix_and_lemmatize(token: str) -> str:
             try:
-                token = token.encode('latin-1').decode('utf-8')
-            except UnicodeEncodeError:
-                pass
-            if token.startswith("Ġ"):
-                token = token[1:]
-            token = token.lower()
-            parses = self.morph.parse(token)
-            return parses[0].normal_form if parses else token
+                # Attempt to fix mis-decoded token by converting from Latin-1 to UTF-8.
+                token_fixed = token.encode('latin-1').decode('utf-8')
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                token_fixed = token  # Fallback if decoding fails
+            # Remove GPT-2's prefix marker (e.g., "Ġ") if present.
+            if token_fixed.startswith("Ġ"):
+                token_fixed = token_fixed[1:]
+            token_fixed = token_fixed.lower()
+            parses = self.morph.parse(token_fixed)
+            return parses[0].normal_form if parses else token_fixed
 
-        # Process sentence tokens
+        # Process sentence tokens with our safe function.
         tokens = [fix_and_lemmatize(t) for t in tokens]
 
         # Prepare target token variations with different preceding spaces.
@@ -582,9 +584,9 @@ class LMEmbedding:
             [fix_and_lemmatize(t) for t in tokenizer.tokenize("  " + target_word_lower)]
         ]
 
-        # Iterate over variations and try to match the sequence of tokens.
+        # Iterate over each variation and try to match the token sequence.
         for target_tokens in target_variations:
-            # Remove empty tokens, if any
+            # Remove empty tokens if any appear
             target_tokens = [t for t in target_tokens if t]
             matches = []
             for i in range(len(tokens) - len(target_tokens) + 1):
@@ -599,22 +601,20 @@ class LMEmbedding:
                             break
                 if match:
                     matches.append(list(range(i, i + len(target_tokens))))
-            
-            # Return indices from the first successful match that also pass the words_mask check.
             if matches:
                 return [idx for idx in matches[0] if idx < len(words_mask) and words_mask[idx] == 1]
 
-        # Debug prints if no match was found
+        # Debug logging if no match is found.
         print()
-        print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on sentence: {sentence}")
-        print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on target_word: {target_word_lower}")
-        print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on target_tokens [0]: {target_variations[0]}")
-        print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on target_tokens [1]: {target_variations[1]}")
-        print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on target_tokens [2]: {target_variations[2]}")
-        print(f"[DEBUG](_map_gpt2_tokens) fullback mapping was called on tokens: {tokens}")
+        print(f"[DEBUG](_map_gpt2_tokens) fallback mapping was called on sentence: {sentence}")
+        print(f"[DEBUG](_map_gpt2_tokens) fallback mapping was called on target_word: {target_word_lower}")
+        print(f"[DEBUG](_map_gpt2_tokens) fallback mapping was called on target_tokens [0]: {[fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower)]}")
+        print(f"[DEBUG](_map_gpt2_tokens) fallback mapping was called on target_tokens [1]: {[fix_and_lemmatize(t) for t in tokenizer.tokenize(' ' + target_word_lower)]}")
+        print(f"[DEBUG](_map_gpt2_tokens) fallback mapping was called on target_tokens [2]: {[fix_and_lemmatize(t) for t in tokenizer.tokenize('  ' + target_word_lower)]}")
+        print(f"[DEBUG](_map_gpt2_tokens) fallback mapping was called on tokens: {tokens}")
         print()
 
-        # Fallback mapping if no direct match is found.
+        # Use fallback mapping if no match is found.
         return self._map_fallback(tokens, words_mask)
 
 
