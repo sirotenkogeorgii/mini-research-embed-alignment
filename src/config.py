@@ -74,31 +74,6 @@ class ModelInfo:
 # 128, 256, 512, 768, 1024, 1280, 4096, 
 
 MODEL_CONFIGS = {
-    "llama-2-7b": ModelInfo(
-        model_id="meta-llama/Llama-2-7b-hf",
-        model_size=6740,
-        dim=4096,
-        model_type=ModelType.LM,
-    ),
-    "distilbert-base-uncased": ModelInfo(
-        model_id="distilbert/distilbert-base-uncased",
-        model_size=67,
-        dim=768,
-        model_type=ModelType.LM,
-    ),
-    "bert-medium": ModelInfo(
-        model_id="prajjwal1/bert-medium",
-        model_size=41,
-        dim=512,
-        model_type=ModelType.LM,
-    ),
-    "bert-base-uncased": ModelInfo(
-        model_id="google-bert/bert-base-uncased",
-        model_size=110,
-        dim=768,
-        model_type=ModelType.LM,
-    ),
-
     ####### russian langue models #######
     ### BERT
     "bert-base-cased-ru": ModelInfo(
@@ -179,6 +154,16 @@ MODEL_CONFIGS = {
     ),
     #####################################
 
+
+
+    ####### english langue models #######
+    ### BERT
+    "bert-base-uncased": ModelInfo(
+        model_id="google-bert/bert-base-uncased",
+        model_size=110,
+        dim=768,
+        model_type=ModelType.LM,
+    ),
     "bert-large-uncased": ModelInfo(
         model_id="google-bert/bert-large-uncased",
         model_size=340,
@@ -186,43 +171,28 @@ MODEL_CONFIGS = {
         model_type=ModelType.LM,
     ),
 
-    "opt-125m": ModelInfo(
-        model_id="facebook/opt-125m",
-        model_size=125,
-        dim=768,
-        model_type=ModelType.LM,
-    ),
-    "opt-350m": ModelInfo(
-        model_id="facebook/opt-350m",
-        model_size=350,
-        dim=1024,
-        model_type=ModelType.LM,
-    ),
-    "opt-1.3b": ModelInfo(
-        model_id="facebook/opt-1.3b",
-        model_size=1300,
-        dim=2048,
-        model_type=ModelType.LM,
-    ),
-
+    ### GPT-2
     "gpt2": ModelInfo(
         model_id="openai-community/gpt2",
-        model_size=117,
+        model_size=124,
         dim=768,
         model_type=ModelType.LM,
     ),
     "gpt2-medium": ModelInfo(
         model_id="openai-community/gpt2-medium",
-        model_size=345,
+        model_size=355,
         dim=1024,
         model_type=ModelType.LM,
     ),
-    "gpt2-large": ModelInfo(
+    "gpt2-larger": ModelInfo(
         model_id="openai-community/gpt2-large",
         model_size=774,
         dim=1280,
         model_type=ModelType.LM,
     ),
+    #####################################
+
+
 
     "vit-base-patch16-224": ModelInfo(
         model_id="google/vit-base-patch16-224",
