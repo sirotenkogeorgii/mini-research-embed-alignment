@@ -310,7 +310,7 @@ class LMEmbedding:
             current_sentence = batch[sentence_idx]
             replaced_alias = alias.replace("_", " ").replace(".", "").strip() # "translation_abc ." ->  "translation abc"
 
-            if replaced_alias not in current_sentence:
+            if replaced_alias.lower() not in current_sentence.lower():
                 print(f"[DEBUG] {replaced_alias} is not in {current_sentence}")
                 continue
 
