@@ -677,6 +677,20 @@ class LMEmbedding:
 
         ]
 
+        for target_tokens in target_variations:
+            matches = []
+            for i in range(len(tokens) - len(target_tokens) + 1):
+                match = True
+                for j in range(len(target_tokens)):
+                    if i + j >= len(tokens) or tokens[i + j] != target_tokens[j]:
+                        match = False
+                        break
+                if match:
+                    matches.append(list(range(i, i + len(target_tokens))))
+                    
+            if matches:
+                return [idx for idx in matches[0] if idx < len(words_mask) and words_mask[idx] == 1]
+
         # Debug logging if no match is found.
         print()
         print(f"[DEBUG](_map_gpt2_tokens) fallback mapping was called on sentence: {sentence}")
