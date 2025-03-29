@@ -614,7 +614,6 @@ class LMEmbedding:
 
             splitted_target_word_normal_form = [self.morph.parse(word)[0].normal_form for word in splitted_target_word]
             splitted_sentence_normal_form = [self.morph.parse(word)[0].normal_form for word in splitted_sentence]
-            print(f"splitted_sentence_normal_form: {splitted_sentence_normal_form}")
 
             for i in range(len(splitted_sentence) - len(splitted_target_word) + 1):
                 current_subsentence = splitted_sentence_normal_form[i: i + len(splitted_target_word)]
