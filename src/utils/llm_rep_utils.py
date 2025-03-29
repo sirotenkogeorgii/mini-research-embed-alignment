@@ -236,6 +236,7 @@ class LMEmbedding:
                 all_insert_data = []
         
         print(f"Number of skipped sentences: {self.skipped_sentences}.")
+        print(f"Number of processed sentences: {self.processed_sentences}.")
 
         # Insert any remaining data
         if all_insert_data:
