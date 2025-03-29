@@ -607,11 +607,14 @@ class LMEmbedding:
 
 
         def adjust_target_word(target_word, sentence):
+            temp_sentence = sentence.replace(".", "").replace(",", "").replace("!", "").replace("?", "")#.replace('"', "")
+
             splitted_target_word = target_word.split()
-            splitted_sentence = sentence.split()
+            splitted_sentence = temp_sentence.split()
 
             splitted_target_word_normal_form = [self.morph.parse(word)[0].normal_form for word in splitted_target_word]
             splitted_sentence_normal_form = [self.morph.parse(word)[0].normal_form for word in splitted_sentence]
+            print(f"splitted_sentence_normal_form: {splitted_sentence_normal_form}")
 
             for i in range(len(splitted_sentence) - len(splitted_target_word) + 1):
                 current_subsentence = splitted_sentence_normal_form[i: i + len(splitted_target_word)]
@@ -620,11 +623,15 @@ class LMEmbedding:
 
             return target_word
 
-        target_word = adjust_target_word(target_word, sentence)
+        sentence = sentence.lower()
+        sentence = sentence.replace(".", "")
+
+        target_word = adjust_target_word(target_word.lower(), sentence)
 
 
+        import string
         # Tokenize the sentence normally
-        tokens = tokenizer.tokenize(sentence.lower())
+        tokens = tokenizer.tokenize(sentence)
 
         # A safer helper: try to fix misencoded tokens; if that fails, use the original token.
         def fix_and_lemmatize(token: str) -> str:
@@ -646,10 +653,19 @@ class LMEmbedding:
         # Prepare target token variations with different preceding spaces.
         target_word_lower = target_word.lower()
         target_variations = [
-            tokenizer.tokenize(target_word),
+            tokenizer.tokenize(target_word_lower),
+
             [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower)],
             [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '"')],
             [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '",')],
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '".')],
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '"!')],
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '"?')],
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '?')],
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '!')],
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '!')],
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '.')],
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + ',')],
 
             [fix_and_lemmatize(t) for t in tokenizer.tokenize(" " + target_word_lower)],
             [fix_and_lemmatize(t) for t in tokenizer.tokenize(" " + target_word_lower + '"')],
@@ -657,31 +673,19 @@ class LMEmbedding:
 
             [fix_and_lemmatize(t) for t in tokenizer.tokenize("  " + target_word_lower)],
             [fix_and_lemmatize(t) for t in tokenizer.tokenize("  " + target_word_lower + '"')],
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize("  " + target_word_lower + '",')]
-        ]
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize("  " + target_word_lower + '",')],
 
-        for target_tokens in target_variations:
-            matches = []
-            for i in range(len(tokens) - len(target_tokens) + 1):
-                match = True
-                for j in range(len(target_tokens)):
-                    if i + j >= len(tokens) or tokens[i + j] != target_tokens[j]:
-                        match = False
-                        break
-                if match:
-                    matches.append(list(range(i, i + len(target_tokens))))
-                    
-            if matches:
-                return [idx for idx in matches[0] if idx < len(words_mask) and words_mask[idx] == 1]
+        ]
 
         # Debug logging if no match is found.
         print()
         print(f"[DEBUG](_map_gpt2_tokens) fallback mapping was called on sentence: {sentence}")
         print(f"[DEBUG](_map_gpt2_tokens) fallback mapping was called on target_word: {target_word_lower}")
-        print(f"[DEBUG](_map_gpt2_tokens) fallback mapping was called on target_tokens [0]: {[fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower)]}")
-        print(f"[DEBUG](_map_gpt2_tokens) fallback mapping was called on target_tokens [1]: {[fix_and_lemmatize(t) for t in tokenizer.tokenize(' ' + target_word_lower)]}")
-        print(f"[DEBUG](_map_gpt2_tokens) fallback mapping was called on target_tokens [2]: {[fix_and_lemmatize(t) for t in tokenizer.tokenize('  ' + target_word_lower)]}")
-        print(f"[DEBUG](_map_gpt2_tokens) fallback mapping was called on tokens: {tokens}")
+        for i in range(len(target_variations)):
+            print(f"[DEBUG](_map_gpt2_tokens) fallback mapping was called on target_tokens [{i}]: {target_variations[i]}")
+        # print(f"[DEBUG](_map_gpt2_tokens) fallback mapping was called on target_tokens [1]: {[fix_and_lemmatize(t) for t in tokenizer.tokenize(' ' + target_word_lower)]}")
+        # print(f"[DEBUG](_map_gpt2_tokens) fallback mapping was called on target_tokens [2]: {[fix_and_lemmatize(t) for t in tokenizer.tokenize('  ' + target_word_lower)]}")
+        # print(f"[DEBUG](_map_gpt2_tokens) fallback mapping was called on tokens: {tokens}")
         print()
 
         # Use fallback mapping if no match is found.
