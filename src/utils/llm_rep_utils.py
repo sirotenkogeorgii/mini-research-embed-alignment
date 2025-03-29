@@ -64,10 +64,12 @@ class LMEmbedding:
         self.con.execute(f"CREATE TABLE IF NOT EXISTS data (alias VARCHAR, embedding FLOAT[{self.model_dim}])")
 
         self.skipped_sentences = 0
+        self.processed_sentences = 0
 
     def get_lm_layer_representations(self) -> None:
         """Extract language model representations"""
         self.skipped_sentences = 0
+        self.processed_sentences = 0
         
         file_to_save = self.save_embeddings_path / f"{self.model_name}_{self.model_dim}.pth"
         if file_to_save.exists():
@@ -327,6 +329,7 @@ class LMEmbedding:
                     embedding = self._get_last_layer_embedding(selected_layers, sentence_idx, target_tokens_indices)
                     
                 embeddings.append(embedding)
+                self.processed_sentences += 1
             
             else:
                 self.skipped_sentences += 1
@@ -554,8 +557,72 @@ class LMEmbedding:
     #     return self._map_fallback(tokens, words_mask)
     
     def _map_gpt2_tokens(self, sentence: str, target_word: str, tokenizer: Any, words_mask: list) -> list:
-        """Map tokens for GPT-2 models with encoding fix, lemmatization, and punctuation normalization."""
-        import string
+        # """Map tokens for GPT-2 models with encoding fix, lemmatization, and punctuation normalization."""
+        # import string
+        # # Tokenize the sentence normally
+        # tokens = tokenizer.tokenize(sentence.lower())
+
+        # # A safer helper: try to fix misencoded tokens; if that fails, use the original token.
+        # def fix_and_lemmatize(token: str) -> str:
+        #     try:
+        #         # Attempt to fix mis-decoded token by converting from Latin-1 to UTF-8.
+        #         token_fixed = token.encode('latin-1').decode('utf-8')
+        #     except (UnicodeEncodeError, UnicodeDecodeError):
+        #         token_fixed = token  # Fallback if decoding fails
+        #     # Remove GPT-2's prefix marker (e.g., "Ġ") if present.
+        #     if token_fixed.startswith("Ġ"):
+        #         token_fixed = token_fixed[1:]
+        #     token_fixed = token_fixed.lower()
+        #     parses = self.morph.parse(token_fixed)
+        #     return parses[0].normal_form if parses else token_fixed
+
+        # # Process sentence tokens with our safe function.
+        # tokens = [fix_and_lemmatize(t) for t in tokens]
+
+        # # Prepare target token variations with different preceding spaces.
+        # target_word_lower = target_word.lower()
+        # target_variations = [
+        #     [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower)],
+        #     [fix_and_lemmatize(t) for t in tokenizer.tokenize(" " + target_word_lower)],
+        #     [fix_and_lemmatize(t) for t in tokenizer.tokenize("  " + target_word_lower)]
+        # ]
+
+        # # Iterate over each variation and try to match the token sequence.
+        # for target_tokens in target_variations:
+        #     # Remove empty tokens if any appear
+        #     target_tokens = [t for t in target_tokens if t]
+        #     matches = []
+        #     for i in range(len(tokens) - len(target_tokens) + 1):
+        #         match = True
+        #         for j in range(len(target_tokens)):
+        #             token_sentence = tokens[i + j]
+        #             token_target = target_tokens[j]
+        #             # Direct match; if not, try comparing after stripping punctuation
+        #             if token_sentence != token_target:
+        #                 if token_sentence.strip(string.punctuation) != token_target.strip(string.punctuation):
+        #                     match = False
+        #                     break
+        #         if match:
+        #             matches.append(list(range(i, i + len(target_tokens))))
+
+
+        def adjust_target_word(target_word, sentence):
+            splitted_target_word = target_word.split()
+            splitted_sentence = sentence.split()
+
+            splitted_target_word_normal_form = [self.morph.parse(word)[0].normal_form for word in splitted_target_word]
+            splitted_sentence_normal_form = [self.morph.parse(word)[0].normal_form for word in splitted_sentence]
+
+            for i in range(len(splitted_sentence) - len(splitted_target_word) + 1):
+                current_subsentence = splitted_sentence_normal_form[i: i + len(splitted_target_word)]
+                if current_subsentence == splitted_target_word_normal_form:
+                    return " ".join(splitted_sentence[i: i + len(splitted_target_word)])
+
+            return target_word
+
+        target_word = adjust_target_word(target_word, sentence)
+
+
         # Tokenize the sentence normally
         tokens = tokenizer.tokenize(sentence.lower())
 
@@ -579,28 +646,31 @@ class LMEmbedding:
         # Prepare target token variations with different preceding spaces.
         target_word_lower = target_word.lower()
         target_variations = [
+            tokenizer.tokenize(target_word),
             [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower)],
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '"')],
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '",')],
+
             [fix_and_lemmatize(t) for t in tokenizer.tokenize(" " + target_word_lower)],
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize("  " + target_word_lower)]
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize(" " + target_word_lower + '"')],
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize(" " + target_word_lower + '",')],
+
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize("  " + target_word_lower)],
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize("  " + target_word_lower + '"')],
+            [fix_and_lemmatize(t) for t in tokenizer.tokenize("  " + target_word_lower + '",')]
         ]
 
-        # Iterate over each variation and try to match the token sequence.
         for target_tokens in target_variations:
-            # Remove empty tokens if any appear
-            target_tokens = [t for t in target_tokens if t]
             matches = []
             for i in range(len(tokens) - len(target_tokens) + 1):
                 match = True
                 for j in range(len(target_tokens)):
-                    token_sentence = tokens[i + j]
-                    token_target = target_tokens[j]
-                    # Direct match; if not, try comparing after stripping punctuation
-                    if token_sentence != token_target:
-                        if token_sentence.strip(string.punctuation) != token_target.strip(string.punctuation):
-                            match = False
-                            break
+                    if i + j >= len(tokens) or tokens[i + j] != target_tokens[j]:
+                        match = False
+                        break
                 if match:
                     matches.append(list(range(i, i + len(target_tokens))))
+                    
             if matches:
                 return [idx for idx in matches[0] if idx < len(words_mask) and words_mask[idx] == 1]
 
