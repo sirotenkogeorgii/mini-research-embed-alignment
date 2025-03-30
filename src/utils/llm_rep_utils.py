@@ -429,7 +429,24 @@ class LMEmbedding:
         # target_tokens = tokenizer.tokenize(target_word.lower())
 
         tokens = tokenizer.tokenize(sentence)
-        target_tokens = tokenizer.tokenize(target_word)
+        
+        if self.current_language.lower() == "german":
+            target_tokens = [
+                tokenizer.tokenize(target_word),
+                tokenizer.tokenize(target_word + "ten"),
+                tokenizer.tokenize(target_word + "ste"),
+                tokenizer.tokenize(target_word + "ert"),
+                tokenizer.tokenize(target_word + "te"),
+                tokenizer.tokenize(target_word + "et"),
+                tokenizer.tokenize(target_word + "st"),
+                tokenizer.tokenize(target_word + "en"),
+                tokenizer.tokenize(target_word + "es"),
+                tokenizer.tokenize(target_word + "s"),
+                tokenizer.tokenize(target_word + "n"),
+                tokenizer.tokenize(target_word + "e"),
+                ]
+        else:
+            target_tokens = [tokenizer.tokenize(target_word)]
 
         def lemmatize_bert_token(token: str) -> str:
             clean = token.replace("##", "").lower()
@@ -437,34 +454,36 @@ class LMEmbedding:
             return parses[0].normal_form if parses else clean
 
         tokens = [lemmatize_bert_token(t) for t in tokens]
-        target_tokens = [lemmatize_bert_token(t) for t in target_tokens]
+        target_tokens = [[lemmatize_bert_token(t) for t in target_tokens_instance] for target_tokens_instance in target_tokens]
 
 
         # Find potential matches in the tokenized sentence
-        matches = []
-        for i in range(len(tokens) - len(target_tokens) + 1):
-            # Check if we have a match for the first token
-            if tokens[i].lower() == target_tokens[0].lower():
-                match = True
-                # Check if subsequent tokens match
-                for j in range(1, len(target_tokens)):
-                    if i + j >= len(tokens) or tokens[i + j].lower() != target_tokens[j].lower():
-                        match = False
-                        break
-                if match:
-                    matches.append(list(range(i, i + len(target_tokens))))
-        
-        # If we have matches, use the first one
-        if matches:
-            # An attention mask is typically a binary tensor with:
-            # 1 for tokens that should be attended to (real tokens).
-            # 0 for tokens that should be ignored (padding tokens).
-            return [idx for idx in matches[0] if idx < len(words_mask) and words_mask[idx] == 1]
+        for target_tokens_instance in target_tokens:
+            matches = []
+            for i in range(len(tokens) - len(target_tokens_instance) + 1):
+                # Check if we have a match for the first token
+                if tokens[i].lower() == target_tokens_instance[0].lower():
+                    match = True
+                    # Check if subsequent tokens match
+                    for j in range(1, len(target_tokens_instance)):
+                        if i + j >= len(tokens) or tokens[i + j].lower() != target_tokens_instance[j].lower():
+                            match = False
+                            break
+                    if match:
+                        matches.append(list(range(i, i + len(target_tokens_instance))))
+            
+            # If we have matches, use the first one
+            if matches:
+                # An attention mask is typically a binary tensor with:
+                # 1 for tokens that should be attended to (real tokens).
+                # 0 for tokens that should be ignored (padding tokens).
+                return [idx for idx in matches[0] if idx < len(words_mask) and words_mask[idx] == 1]
         
 
         print()
         print(f"[DEBUG](bert) fullback mapping was called on sentence {sentence.lower()}")
-        print(f"[DEBUG](bert) fullback mapping was called on target_word {target_word.lower()}, {target_tokens}")
+        for i, target_tokens_instance in enumerate(target_tokens):
+            print(f"[DEBUG](bert) fullback mapping was called on target_word [{i}]: {target_word.lower()}, {target_tokens_instance}")
         print(f"[DEBUG](bert) fullback mapping was called on tokens {tokens}")
         print()
 
