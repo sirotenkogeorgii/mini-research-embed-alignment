@@ -437,13 +437,14 @@ class LMEmbedding:
                 tokenizer.tokenize(target_word + "ste"),
                 tokenizer.tokenize(target_word + "ert"),
                 tokenizer.tokenize(target_word + "te"),
-                tokenizer.tokenize(target_word + "et"),
                 tokenizer.tokenize(target_word + "st"),
                 tokenizer.tokenize(target_word + "en"),
+                tokenizer.tokenize(target_word + "et"),
                 tokenizer.tokenize(target_word + "es"),
                 tokenizer.tokenize(target_word + "s"),
                 tokenizer.tokenize(target_word + "n"),
                 tokenizer.tokenize(target_word + "e"),
+                tokenizer.tokenize(target_word + "t"),
                 ]
         else:
             target_tokens = [tokenizer.tokenize(target_word)]
