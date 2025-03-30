@@ -1011,12 +1011,13 @@ class LMEmbedding:
 
         avg_embeddings, final_alias = [], []
         for i in aliases:
-            query = f"SELECT embedding FROM data WHERE alias = '{i}'"
-            result = self.con.execute(query).fetchall()
+            query = "SELECT embedding FROM data WHERE alias = ?"
+            result = self.con.execute(query, (i,)).fetchall()
             if result:
                 result = np.concatenate(result, axis=0)
                 avg_embeddings.append(np.mean(result, axis=0))
                 final_alias.append(i)
+
         print(result.shape)
         # torch.save({"dico": final_alias, "vectors": torch.from_numpy(np.array(avg_embeddings))},
         #            self.save_embeddings_path / f"{self.model_name}_{self.model_dim}.pth")
