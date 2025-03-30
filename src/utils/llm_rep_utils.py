@@ -1009,8 +1009,9 @@ class LMEmbedding:
             
         # torch.save(all_embeddings, avg_dir / f"{self.model_name}_{self.model_dim}.pth") 
 
+        print("Embeddings saving...")
         avg_embeddings, final_alias = [], []
-        for i in aliases:
+        for i in tqdm(aliases):
             query = "SELECT embedding FROM data WHERE alias = ?"
             result = self.con.execute(query, (i,)).fetchall()
             if result:

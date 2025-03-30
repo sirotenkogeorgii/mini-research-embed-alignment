@@ -22,7 +22,7 @@ class ImageDataset(Dataset):
         self.dataset_path: Path = dataset_path
         self.labels: list = image_classes
         self.extractor: Any = extractor
-        self.MAX_SIZE: int = 200 # maximum possible images per label
+        self.MAX_SIZE: int = 100 # maximum possible images per label
         self.RESOLUTION_HEIGHT: int = resolution
         self.RESOLUTION_WIDTH: int = resolution
         self.CHANNELS: int = 3
@@ -32,7 +32,7 @@ class ImageDataset(Dataset):
 
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, Tuple[str, int]]:
         images = []
-        # print("[DEBUG](ImageDataset)(0)")
+        # print("[DEBUG](ImageDataset)(100)")
         category_path = self.dataset_path / self.labels[index]
         for filename in category_path.iterdir():
             try:
