@@ -131,7 +131,7 @@ class LMEmbedding:
         tokenizer = AutoTokenizer.from_pretrained(
             self.model_id,
             cache_dir=cache_path,
-            use_fast=False
+            use_fast=self.config.model.use_fast
         )
 
         if self.model_name.startswith(("gpt")):
