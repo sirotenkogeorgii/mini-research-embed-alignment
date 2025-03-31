@@ -135,7 +135,7 @@ MODEL_CONFIGS = {
 
     ### GPT-2
     "german-gpt2": ModelInfo(
-        model_id="german-gpt2",
+        model_id="dbmdz/german-gpt2",
         model_size=137,
         dim=768,
         model_type=ModelType.LM,
@@ -376,6 +376,7 @@ class MuseConfig:
         },
     )
     supervised: bool = field(default=True, metadata={"help": "Whether to perform alignment in a supervised manner."})
+    supervised_kfolds: bool = field(default=False, metadata={"help": "Whether to perform alignment in a supervised manner."})
     lm_dataset: str = field(default="common-words-79k", metadata={"help": "Source dataset for the language embeddings."})
     vm_dataset: str = field(default="imagenet-ul-ex-1k-train-subset", metadata={"help": "Source dataset for the vision embeddings."})
     lm: str = field(default="bert-base-uncased", metadata={"help": "Language model name."})
@@ -480,7 +481,8 @@ class MuseConfig:
     topk: int = field(default=100)
     save_embeddings_dir: str = field(default="")
     save_word2id_dir: str = field(default="")
-    # save_word2id_dir: str = field(default="")
+    categories_path: str = field(default="")
+    kfolds_dir: str = field(default="")
 
     def __post_init__(self):
         self.more_exp = True if self.exp_type != ExperimentsType.BASE else False
