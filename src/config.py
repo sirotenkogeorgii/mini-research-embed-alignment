@@ -61,6 +61,10 @@ class ModelInfo:
     torch_type: str = field(
         default="float32", metadata={"help": "Mixed precision type."}
     )
+    use_fast: bool = field(
+        default=True, metadata={"help": "Whether to use fast tokenizer."}
+    )
+    
 
     def __post_init__(self):
         self.model_name = self.model_id.split("/")[-1]
