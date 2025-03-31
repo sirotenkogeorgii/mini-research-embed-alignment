@@ -128,11 +128,17 @@ class LMEmbedding:
             self.model_id, cache_dir=cache_path, output_hidden_states=True
         )
 
-        tokenizer = AutoTokenizer.from_pretrained(
-            self.model_id,
-            cache_dir=cache_path,
-            use_fast=self.config.model.use_fast
-        )
+        try: 
+            tokenizer = AutoTokenizer.from_pretrained(
+                self.model_id,
+                cache_dir=cache_path,
+                use_fast=self.config.model.use_fast
+            )
+        except TypeError as e:
+            tokenizer = AutoTokenizer.from_pretrained(
+                self.model_id,
+                cache_dir=cache_path
+                )
 
         if self.model_name.startswith(("gpt")):
             tokenizer.pad_token = tokenizer.eos_token
