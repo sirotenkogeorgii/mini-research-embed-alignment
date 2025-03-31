@@ -653,70 +653,75 @@ class LMEmbedding:
         sentence = sentence.lower()
         sentence = sentence.replace(".", "")
 
-        target_word = adjust_target_word(target_word.lower(), sentence)
+        sufficies = ["", "ten", "ste", "ert", "te", "st", "en", "et", "es", "s", "n", "e", "t"] if  self.current_language.lower() == "german" else [""]
+
+        for suffix in sufficies:
+            target_word = target_word + suffix
+
+            target_word = adjust_target_word(target_word.lower(), sentence)
 
 
-        import string
-        # Tokenize the sentence normally
-        tokens = tokenizer.tokenize(sentence)
+            import string
+            # Tokenize the sentence normally
+            tokens = tokenizer.tokenize(sentence)
 
-        # A safer helper: try to fix misencoded tokens; if that fails, use the original token.
-        def fix_and_lemmatize(token: str) -> str:
-            try:
-                # Attempt to fix mis-decoded token by converting from Latin-1 to UTF-8.
-                token_fixed = token.encode('latin-1').decode('utf-8')
-            except (UnicodeEncodeError, UnicodeDecodeError):
-                token_fixed = token  # Fallback if decoding fails
-            # Remove GPT-2's prefix marker (e.g., "Ġ") if present.
-            if token_fixed.startswith("Ġ"):
-                token_fixed = token_fixed[1:]
-            token_fixed = token_fixed.lower()
-            parses = self.morph.parse(token_fixed)
-            return parses[0].normal_form if parses else token_fixed
+            # A safer helper: try to fix misencoded tokens; if that fails, use the original token.
+            def fix_and_lemmatize(token: str) -> str:
+                try:
+                    # Attempt to fix mis-decoded token by converting from Latin-1 to UTF-8.
+                    token_fixed = token.encode('latin-1').decode('utf-8')
+                except (UnicodeEncodeError, UnicodeDecodeError):
+                    token_fixed = token  # Fallback if decoding fails
+                # Remove GPT-2's prefix marker (e.g., "Ġ") if present.
+                if token_fixed.startswith("Ġ"):
+                    token_fixed = token_fixed[1:]
+                token_fixed = token_fixed.lower()
+                parses = self.morph.parse(token_fixed)
+                return parses[0].normal_form if parses else token_fixed
 
-        # Process sentence tokens with our safe function.
-        tokens = [fix_and_lemmatize(t) for t in tokens]
+            # Process sentence tokens with our safe function.
+            tokens = [fix_and_lemmatize(t) for t in tokens]
 
-        # Prepare target token variations with different preceding spaces.
-        target_word_lower = target_word.lower()
-        target_variations = [
-            tokenizer.tokenize(target_word_lower),
+            # Prepare target token variations with different preceding spaces.
+            target_word_lower = target_word.lower()
+            target_variations = [
+                tokenizer.tokenize(target_word_lower),
 
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower)],
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '"')],
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '",')],
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '".')],
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '"!')],
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '"?')],
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '?')],
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '!')],
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '!')],
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '.')],
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + ',')],
+                [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower)],
+                [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '"')],
+                [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '",')],
+                [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '".')],
+                [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '"!')],
+                [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '"?')],
+                [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '?')],
+                [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '!')],
+                [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '!')],
+                [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + '.')],
+                [fix_and_lemmatize(t) for t in tokenizer.tokenize(target_word_lower + ',')],
 
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize(" " + target_word_lower)],
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize(" " + target_word_lower + '"')],
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize(" " + target_word_lower + '",')],
+                [fix_and_lemmatize(t) for t in tokenizer.tokenize(" " + target_word_lower)],
+                [fix_and_lemmatize(t) for t in tokenizer.tokenize(" " + target_word_lower + '"')],
+                [fix_and_lemmatize(t) for t in tokenizer.tokenize(" " + target_word_lower + '",')],
 
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize("  " + target_word_lower)],
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize("  " + target_word_lower + '"')],
-            [fix_and_lemmatize(t) for t in tokenizer.tokenize("  " + target_word_lower + '",')],
+                [fix_and_lemmatize(t) for t in tokenizer.tokenize("  " + target_word_lower)],
+                [fix_and_lemmatize(t) for t in tokenizer.tokenize("  " + target_word_lower + '"')],
+                [fix_and_lemmatize(t) for t in tokenizer.tokenize("  " + target_word_lower + '",')],
 
-        ]
+            ]
 
-        for target_tokens in target_variations:
-            matches = []
-            for i in range(len(tokens) - len(target_tokens) + 1):
-                match = True
-                for j in range(len(target_tokens)):
-                    if i + j >= len(tokens) or tokens[i + j] != target_tokens[j]:
-                        match = False
-                        break
-                if match:
-                    matches.append(list(range(i, i + len(target_tokens))))
-                    
-            if matches:
-                return [idx for idx in matches[0] if idx < len(words_mask) and words_mask[idx] == 1]
+            for target_tokens in target_variations:
+                matches = []
+                for i in range(len(tokens) - len(target_tokens) + 1):
+                    match = True
+                    for j in range(len(target_tokens)):
+                        if i + j >= len(tokens) or tokens[i + j] != target_tokens[j]:
+                            match = False
+                            break
+                    if match:
+                        matches.append(list(range(i, i + len(target_tokens))))
+                        
+                if matches:
+                    return [idx for idx in matches[0] if idx < len(words_mask) and words_mask[idx] == 1]
 
         # Debug logging if no match is found.
         print()
