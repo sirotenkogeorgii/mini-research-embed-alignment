@@ -655,8 +655,9 @@ class LMEmbedding:
 
         sufficies = ["", "ten", "ste", "ert", "te", "st", "en", "et", "es", "s", "n", "e", "t"] if  self.current_language.lower() == "german" else [""]
 
+        original_target_word = target_word[:]
         for suffix in sufficies:
-            target_word = target_word + suffix
+            target_word = original_target_word + suffix
 
             target_word = adjust_target_word(target_word.lower(), sentence)
 
