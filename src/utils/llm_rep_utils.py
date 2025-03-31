@@ -140,9 +140,6 @@ class LMEmbedding:
                 cache_dir=cache_path
                 )
 
-        if self.model_name.startswith(("gpt", "german-gpt2")):
-            tokenizer.pad_token = tokenizer.eos_token
-
         # Check for CUDA availability
         has_cuda = torch.cuda.is_available()
         
@@ -191,6 +188,10 @@ class LMEmbedding:
         if hasattr(model, "config") and getattr(model.config, "model_type", None) != "gpt2":
             # Don't use inference mode for GPT-2 as it can lead to issues
             torch.inference_mode(True)
+
+        if self.model_name.startswith(("gpt", "german-gpt2")):
+            tokenizer.pad_token = tokenizer.eos_token
+            model.resize_token_embeddings(len(tokenizer))
 
         return model, tokenizer
 
