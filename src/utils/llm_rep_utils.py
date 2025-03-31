@@ -140,7 +140,7 @@ class LMEmbedding:
                 cache_dir=cache_path
                 )
 
-        if self.model_name.startswith(("gpt")):
+        if self.model_name.startswith(("gpt", "german-gpt2")):
             tokenizer.pad_token = tokenizer.eos_token
 
         # Check for CUDA availability
